@@ -1,5 +1,208 @@
 var Module = typeof Module !== "undefined" ? Module : {};
 
+if (!Module.expectedDataFileDownloads) {
+ Module.expectedDataFileDownloads = 0;
+}
+
+Module.expectedDataFileDownloads++;
+
+(function() {
+ var loadPackage = function(metadata) {
+  var PACKAGE_PATH = "";
+  if (typeof window === "object") {
+   PACKAGE_PATH = window["encodeURIComponent"](window.location.pathname.toString().substring(0, window.location.pathname.toString().lastIndexOf("/")) + "/");
+  } else if (typeof process === "undefined" && typeof location !== "undefined") {
+   PACKAGE_PATH = encodeURIComponent(location.pathname.toString().substring(0, location.pathname.toString().lastIndexOf("/")) + "/");
+  }
+  var PACKAGE_NAME = "build/bin/index.data";
+  var REMOTE_PACKAGE_BASE = "index.data";
+  if (typeof Module["locateFilePackage"] === "function" && !Module["locateFile"]) {
+   Module["locateFile"] = Module["locateFilePackage"];
+   err("warning: you defined Module.locateFilePackage, that has been renamed to Module.locateFile (using your locateFilePackage for now)");
+  }
+  var REMOTE_PACKAGE_NAME = Module["locateFile"] ? Module["locateFile"](REMOTE_PACKAGE_BASE, "") : REMOTE_PACKAGE_BASE;
+  var REMOTE_PACKAGE_SIZE = metadata["remote_package_size"];
+  var PACKAGE_UUID = metadata["package_uuid"];
+  function fetchRemotePackage(packageName, packageSize, callback, errback) {
+   if (typeof process === "object") {
+    require("fs").readFile(packageName, function(err, contents) {
+     if (err) {
+      errback(err);
+     } else {
+      callback(contents.buffer);
+     }
+    });
+    return;
+   }
+   var xhr = new XMLHttpRequest();
+   xhr.open("GET", packageName, true);
+   xhr.responseType = "arraybuffer";
+   xhr.onprogress = function(event) {
+    var url = packageName;
+    var size = packageSize;
+    if (event.total) size = event.total;
+    if (event.loaded) {
+     if (!xhr.addedTotal) {
+      xhr.addedTotal = true;
+      if (!Module.dataFileDownloads) Module.dataFileDownloads = {};
+      Module.dataFileDownloads[url] = {
+       loaded: event.loaded,
+       total: size
+      };
+     } else {
+      Module.dataFileDownloads[url].loaded = event.loaded;
+     }
+     var total = 0;
+     var loaded = 0;
+     var num = 0;
+     for (var download in Module.dataFileDownloads) {
+      var data = Module.dataFileDownloads[download];
+      total += data.total;
+      loaded += data.loaded;
+      num++;
+     }
+     total = Math.ceil(total * Module.expectedDataFileDownloads / num);
+     if (Module["setStatus"]) Module["setStatus"]("Downloading data... (" + loaded + "/" + total + ")");
+    } else if (!Module.dataFileDownloads) {
+     if (Module["setStatus"]) Module["setStatus"]("Downloading data...");
+    }
+   };
+   xhr.onerror = function(event) {
+    throw new Error("NetworkError for: " + packageName);
+   };
+   xhr.onload = function(event) {
+    if (xhr.status == 200 || xhr.status == 304 || xhr.status == 206 || xhr.status == 0 && xhr.response) {
+     var packageData = xhr.response;
+     callback(packageData);
+    } else {
+     throw new Error(xhr.statusText + " : " + xhr.responseURL);
+    }
+   };
+   xhr.send(null);
+  }
+  function handleError(error) {
+   console.error("package error:", error);
+  }
+  var fetchedCallback = null;
+  var fetched = Module["getPreloadedPackage"] ? Module["getPreloadedPackage"](REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE) : null;
+  if (!fetched) fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, function(data) {
+   if (fetchedCallback) {
+    fetchedCallback(data);
+    fetchedCallback = null;
+   } else {
+    fetched = data;
+   }
+  }, handleError);
+  function runWithFS() {
+   function assert(check, msg) {
+    if (!check) throw msg + new Error().stack;
+   }
+   Module["FS_createPath"]("/", "sounds", true, true);
+   Module["FS_createPath"]("/", "sprites", true, true);
+   function DataRequest(start, end, audio) {
+    this.start = start;
+    this.end = end;
+    this.audio = audio;
+   }
+   DataRequest.prototype = {
+    requests: {},
+    open: function(mode, name) {
+     this.name = name;
+     this.requests[name] = this;
+     Module["addRunDependency"]("fp " + this.name);
+    },
+    send: function() {},
+    onload: function() {
+     var byteArray = this.byteArray.subarray(this.start, this.end);
+     this.finish(byteArray);
+    },
+    finish: function(byteArray) {
+     var that = this;
+     Module["FS_createDataFile"](this.name, null, byteArray, true, true, true);
+     Module["removeRunDependency"]("fp " + that.name);
+     this.requests[this.name] = null;
+    }
+   };
+   var files = metadata["files"];
+   for (var i = 0; i < files.length; ++i) {
+    new DataRequest(files[i]["start"], files[i]["end"], files[i]["audio"]).open("GET", files[i]["filename"]);
+   }
+   function processPackageData(arrayBuffer) {
+    assert(arrayBuffer, "Loading data file failed.");
+    assert(arrayBuffer instanceof ArrayBuffer, "bad input to processPackageData");
+    var byteArray = new Uint8Array(arrayBuffer);
+    var curr;
+    DataRequest.prototype.byteArray = byteArray;
+    var files = metadata["files"];
+    for (var i = 0; i < files.length; ++i) {
+     DataRequest.prototype.requests[files[i].filename].onload();
+    }
+    Module["removeRunDependency"]("datafile_build/bin/index.data");
+   }
+   Module["addRunDependency"]("datafile_build/bin/index.data");
+   if (!Module.preloadResults) Module.preloadResults = {};
+   Module.preloadResults[PACKAGE_NAME] = {
+    fromCache: false
+   };
+   if (fetched) {
+    processPackageData(fetched);
+    fetched = null;
+   } else {
+    fetchedCallback = processPackageData;
+   }
+  }
+  if (Module["calledRun"]) {
+   runWithFS();
+  } else {
+   if (!Module["preRun"]) Module["preRun"] = [];
+   Module["preRun"].push(runWithFS);
+  }
+ };
+ loadPackage({
+  "files": [ {
+   "filename": "/sounds/flip.wav",
+   "start": 0,
+   "end": 131200,
+   "audio": 1
+  }, {
+   "filename": "/sounds/side_a.ogg",
+   "start": 131200,
+   "end": 4997418,
+   "audio": 1
+  }, {
+   "filename": "/sprites/bg.png",
+   "start": 4997418,
+   "end": 5000179,
+   "audio": 0
+  }, {
+   "filename": "/sprites/cursor_arrow.png",
+   "start": 5000179,
+   "end": 5000314,
+   "audio": 0
+  }, {
+   "filename": "/sprites/letter_bottom.png",
+   "start": 5000314,
+   "end": 5001072,
+   "audio": 0
+  }, {
+   "filename": "/sprites/letter_top.png",
+   "start": 5001072,
+   "end": 5001763,
+   "audio": 0
+  } ],
+  "remote_package_size": 5001763,
+  "package_uuid": "586ca7bd-08d6-40b6-9c26-acf71d049c84"
+ });
+})();
+
+var necessaryPreJSTasks = Module["preRun"].slice();
+
+if (!Module["preRun"]) throw "Module.preRun should exist because file support used it; did a pre-js delete it?";
+
+necessaryPreJSTasks.forEach(function(task) {
+ if (Module["preRun"].indexOf(task) < 0) throw "All preRun tasks that exist before user pre-js code should remain after; did you replace Module or modify Module.preRun?";
+});
+
 var moduleOverrides = {};
 
 var key;
@@ -1129,9 +1332,11 @@ function initRuntime() {
  checkStackCookie();
  assert(!runtimeInitialized);
  runtimeInitialized = true;
+ ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
  if (!Module["noFSInit"] && !FS.init.initialized) FS.init();
  FS.ignorePermissions = false;
  TTY.init();
+ SOCKFS.root = FS.mount(SOCKFS, {}, null);
  callRuntimeCallbacks(__ATINIT__);
 }
 
@@ -1419,7 +1624,81 @@ var tempDouble;
 var tempI64;
 
 var ASM_CONSTS = {
- 238096: function() {
+ 234924: function() {
+  window.onunload = Module._olc_OnPageUnload;
+ },
+ 234968: function() {
+  Module._olc_EmscriptenShellCss = "width: 100%; height: 70vh; margin-left: auto; margin-right: auto;";
+  Module._olc_WindowAspectRatio = 1;
+  Module.canvas.parentNode.addEventListener("resize", function(e) {
+   if (e.defaultPrevented) {
+    e.stopPropagation();
+    return;
+   }
+   var viewWidth = e.detail.width;
+   var viewHeight = e.detail.width / Module._olc_WindowAspectRatio;
+   if (viewHeight > e.detail.height) {
+    viewHeight = e.detail.height;
+    viewWidth = e.detail.height * Module._olc_WindowAspectRatio;
+   }
+   viewHeight = e.detail.height;
+   viewWidth = e.detail.width;
+   if (Module.canvas.parentNode.className == "emscripten_border") Module.canvas.parentNode.style.cssText = Module._olc_EmscriptenShellCss + " width: " + viewWidth.toString() + "px; height: " + viewHeight.toString() + "px;";
+   Module.canvas.setAttribute("width", viewWidth);
+   Module.canvas.setAttribute("height", viewHeight);
+   if (document.fullscreenElement != null) {
+    var top = (e.detail.height - viewHeight) / 2;
+    var left = (e.detail.width - viewWidth) / 2;
+    Module.canvas.style.position = "fixed";
+    Module.canvas.style.top = top.toString() + "px";
+    Module.canvas.style.left = left.toString() + "px";
+    Module.canvas.style.width = "";
+    Module.canvas.style.height = "";
+   }
+   Module._ara_em_update_window_size(viewWidth, viewHeight);
+   Module.canvas.focus();
+   e.stopPropagation();
+  });
+  Module._olc_ResizeCanvas = function() {
+   setTimeout(function() {
+    if (Module.canvas.parentNode.className == "emscripten_border") Module.canvas.parentNode.style.cssText = Module._olc_EmscriptenShellCss;
+    Module.canvas.style.cssText = "width: 100%; height: 100%; outline: none;";
+    var resizeEvent = new CustomEvent("resize", {
+     detail: {
+      width: Module.canvas.clientWidth,
+      height: Module.canvas.clientHeight
+     },
+     bubbles: true,
+     cancelable: true
+    });
+    Module.canvas.dispatchEvent(resizeEvent);
+   }, 50);
+  };
+  document.body.style.cssText += " overscroll-behavior-y: contain;";
+  if (Module.canvas.parentNode.className == "emscripten_border") {
+   document.body.style.margin = "0";
+   Module.canvas.parentNode.style.cssText = Module._olc_EmscriptenShellCss;
+  }
+  Module._olc_ResizeCanvas();
+  var resizeObserver = new ResizeObserver(function(entries) {
+   Module._olc_ResizeCanvas();
+  }).observe(Module.canvas.parentNode);
+  var mutationObserver = new MutationObserver(function(mutationsList, observer) {
+   for (var i = 0; i < mutationsList.length; i++) {
+    for (var j = 0; j < mutationsList[i].addedNodes.length; j++) {
+     if (mutationsList[i].addedNodes[j].id == "canvas") Module._olc_ResizeCanvas();
+    }
+   }
+  }).observe(Module.canvas.parentNode, {
+   attributes: false,
+   childList: true,
+   subtree: false
+  });
+  window.addEventListener("resize", function(e) {
+   Module._olc_ResizeCanvas();
+  });
+ },
+ 237622: function() {
   if ((window.AudioContext || window.webkitAudioContext) === undefined) {
    return 0;
   }
@@ -1476,10 +1755,10 @@ var ASM_CONSTS = {
   }
   return 1;
  },
- 239694: function() {
+ 239220: function() {
   return navigator.mediaDevices !== undefined && navigator.mediaDevices.getUserMedia !== undefined;
  },
- 239798: function() {
+ 239324: function() {
   try {
    var temp = new (window.AudioContext || window.webkitAudioContext)();
    var sampleRate = temp.sampleRate;
@@ -1489,7 +1768,7 @@ var ASM_CONSTS = {
    return 0;
   }
  },
- 239969: function($0, $1, $2, $3, $4) {
+ 239495: function($0, $1, $2, $3, $4) {
   var channels = $0;
   var sampleRate = $1;
   var bufferSize = $2;
@@ -1597,10 +1876,10 @@ var ASM_CONSTS = {
   }
   return miniaudio.track_device(device);
  },
- 244247: function($0) {
+ 243773: function($0) {
   return miniaudio.get_device_by_index($0).webaudio.sampleRate;
  },
- 244313: function($0) {
+ 243839: function($0) {
   var device = miniaudio.get_device_by_index($0);
   if (device.scriptNode !== undefined) {
    device.scriptNode.onaudioprocess = function(e) {};
@@ -1621,22 +1900,22 @@ var ASM_CONSTS = {
   }
   miniaudio.untrack_device_by_index($0);
  },
- 244939: function($0) {
+ 244465: function($0) {
   var device = miniaudio.get_device_by_index($0);
   device.webaudio.resume();
   device.state = 2;
  },
- 245035: function($0) {
+ 244561: function($0) {
   var device = miniaudio.get_device_by_index($0);
   device.webaudio.resume();
   device.state = 2;
  },
- 245131: function($0) {
+ 244657: function($0) {
   var device = miniaudio.get_device_by_index($0);
   device.webaudio.suspend();
   device.state = 1;
  },
- 245228: function($0) {
+ 244754: function($0) {
   var device = miniaudio.get_device_by_index($0);
   device.webaudio.suspend();
   device.state = 1;
@@ -1664,27 +1943,7 @@ function callRuntimeCallbacks(callbacks) {
 }
 
 function demangle(func) {
- demangle.recursionGuard = (demangle.recursionGuard | 0) + 1;
- if (demangle.recursionGuard > 1) return func;
- var __cxa_demangle_func = Module["___cxa_demangle"] || Module["__cxa_demangle"];
- assert(__cxa_demangle_func);
- var stackTop = stackSave();
- try {
-  var s = func;
-  if (s.startsWith("__Z")) s = s.substr(1);
-  var len = lengthBytesUTF8(s) + 1;
-  var buf = stackAlloc(len);
-  stringToUTF8(s, buf, len);
-  var status = stackAlloc(4);
-  var ret = __cxa_demangle_func(buf, 0, 0, status);
-  if ((SAFE_HEAP_LOAD(status | 0, 4, 0) | 0) === 0 && ret) {
-   return UTF8ToString(ret);
-  }
- } catch (e) {} finally {
-  _free(ret);
-  stackRestore(stackTop);
-  if (demangle.recursionGuard < 2) --demangle.recursionGuard;
- }
+ warnOnce("warning: build with  -s DEMANGLE_SUPPORT=1  to link in libcxxabi demangling");
  return func;
 }
 
@@ -1726,6 +1985,10 @@ function unSign(value, bits) {
 
 function ___assert_fail(condition, filename, line, func) {
  abort("Assertion failed: " + UTF8ToString(condition) + ", at: " + [ filename ? UTF8ToString(filename) : "unknown filename", line, func ? UTF8ToString(func) : "unknown function" ]);
+}
+
+function ___handle_stack_overflow() {
+ abort("stack overflow");
 }
 
 function _tzset() {
@@ -1781,11 +2044,6 @@ function _localtime_r(time, tmPtr) {
 
 function ___localtime_r(a0, a1) {
  return _localtime_r(a0, a1);
-}
-
-function setErrNo(value) {
- SAFE_HEAP_STORE(___errno_location() | 0, value | 0, 4);
- return value;
 }
 
 var PATH = {
@@ -4487,6 +4745,682 @@ var SYSCALLS = {
  }
 };
 
+function ___sys__newselect(nfds, readfds, writefds, exceptfds, timeout) {
+ try {
+  assert(nfds <= 64, "nfds must be less than or equal to 64");
+  assert(!exceptfds, "exceptfds not supported");
+  var total = 0;
+  var srcReadLow = readfds ? SAFE_HEAP_LOAD(readfds | 0, 4, 0) | 0 : 0, srcReadHigh = readfds ? SAFE_HEAP_LOAD(readfds + 4 | 0, 4, 0) | 0 : 0;
+  var srcWriteLow = writefds ? SAFE_HEAP_LOAD(writefds | 0, 4, 0) | 0 : 0, srcWriteHigh = writefds ? SAFE_HEAP_LOAD(writefds + 4 | 0, 4, 0) | 0 : 0;
+  var srcExceptLow = exceptfds ? SAFE_HEAP_LOAD(exceptfds | 0, 4, 0) | 0 : 0, srcExceptHigh = exceptfds ? SAFE_HEAP_LOAD(exceptfds + 4 | 0, 4, 0) | 0 : 0;
+  var dstReadLow = 0, dstReadHigh = 0;
+  var dstWriteLow = 0, dstWriteHigh = 0;
+  var dstExceptLow = 0, dstExceptHigh = 0;
+  var allLow = (readfds ? SAFE_HEAP_LOAD(readfds | 0, 4, 0) | 0 : 0) | (writefds ? SAFE_HEAP_LOAD(writefds | 0, 4, 0) | 0 : 0) | (exceptfds ? SAFE_HEAP_LOAD(exceptfds | 0, 4, 0) | 0 : 0);
+  var allHigh = (readfds ? SAFE_HEAP_LOAD(readfds + 4 | 0, 4, 0) | 0 : 0) | (writefds ? SAFE_HEAP_LOAD(writefds + 4 | 0, 4, 0) | 0 : 0) | (exceptfds ? SAFE_HEAP_LOAD(exceptfds + 4 | 0, 4, 0) | 0 : 0);
+  var check = function(fd, low, high, val) {
+   return fd < 32 ? low & val : high & val;
+  };
+  for (var fd = 0; fd < nfds; fd++) {
+   var mask = 1 << fd % 32;
+   if (!check(fd, allLow, allHigh, mask)) {
+    continue;
+   }
+   var stream = FS.getStream(fd);
+   if (!stream) throw new FS.ErrnoError(8);
+   var flags = SYSCALLS.DEFAULT_POLLMASK;
+   if (stream.stream_ops.poll) {
+    flags = stream.stream_ops.poll(stream);
+   }
+   if (flags & 1 && check(fd, srcReadLow, srcReadHigh, mask)) {
+    fd < 32 ? dstReadLow = dstReadLow | mask : dstReadHigh = dstReadHigh | mask;
+    total++;
+   }
+   if (flags & 4 && check(fd, srcWriteLow, srcWriteHigh, mask)) {
+    fd < 32 ? dstWriteLow = dstWriteLow | mask : dstWriteHigh = dstWriteHigh | mask;
+    total++;
+   }
+   if (flags & 2 && check(fd, srcExceptLow, srcExceptHigh, mask)) {
+    fd < 32 ? dstExceptLow = dstExceptLow | mask : dstExceptHigh = dstExceptHigh | mask;
+    total++;
+   }
+  }
+  if (readfds) {
+   SAFE_HEAP_STORE(readfds | 0, dstReadLow | 0, 4);
+   SAFE_HEAP_STORE(readfds + 4 | 0, dstReadHigh | 0, 4);
+  }
+  if (writefds) {
+   SAFE_HEAP_STORE(writefds | 0, dstWriteLow | 0, 4);
+   SAFE_HEAP_STORE(writefds + 4 | 0, dstWriteHigh | 0, 4);
+  }
+  if (exceptfds) {
+   SAFE_HEAP_STORE(exceptfds | 0, dstExceptLow | 0, 4);
+   SAFE_HEAP_STORE(exceptfds + 4 | 0, dstExceptHigh | 0, 4);
+  }
+  return total;
+ } catch (e) {
+  if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError)) abort(e);
+  return -e.errno;
+ }
+}
+
+var SOCKFS = {
+ mount: function(mount) {
+  Module["websocket"] = Module["websocket"] && "object" === typeof Module["websocket"] ? Module["websocket"] : {};
+  Module["websocket"]._callbacks = {};
+  Module["websocket"]["on"] = function(event, callback) {
+   if ("function" === typeof callback) {
+    this._callbacks[event] = callback;
+   }
+   return this;
+  };
+  Module["websocket"].emit = function(event, param) {
+   if ("function" === typeof this._callbacks[event]) {
+    this._callbacks[event].call(this, param);
+   }
+  };
+  return FS.createNode(null, "/", 16384 | 511, 0);
+ },
+ createSocket: function(family, type, protocol) {
+  type &= ~526336;
+  var streaming = type == 1;
+  if (protocol) {
+   assert(streaming == (protocol == 6));
+  }
+  var sock = {
+   family: family,
+   type: type,
+   protocol: protocol,
+   server: null,
+   error: null,
+   peers: {},
+   pending: [],
+   recv_queue: [],
+   sock_ops: SOCKFS.websocket_sock_ops
+  };
+  var name = SOCKFS.nextname();
+  var node = FS.createNode(SOCKFS.root, name, 49152, 0);
+  node.sock = sock;
+  var stream = FS.createStream({
+   path: name,
+   node: node,
+   flags: 2,
+   seekable: false,
+   stream_ops: SOCKFS.stream_ops
+  });
+  sock.stream = stream;
+  return sock;
+ },
+ getSocket: function(fd) {
+  var stream = FS.getStream(fd);
+  if (!stream || !FS.isSocket(stream.node.mode)) {
+   return null;
+  }
+  return stream.node.sock;
+ },
+ stream_ops: {
+  poll: function(stream) {
+   var sock = stream.node.sock;
+   return sock.sock_ops.poll(sock);
+  },
+  ioctl: function(stream, request, varargs) {
+   var sock = stream.node.sock;
+   return sock.sock_ops.ioctl(sock, request, varargs);
+  },
+  read: function(stream, buffer, offset, length, position) {
+   var sock = stream.node.sock;
+   var msg = sock.sock_ops.recvmsg(sock, length);
+   if (!msg) {
+    return 0;
+   }
+   buffer.set(msg.buffer, offset);
+   return msg.buffer.length;
+  },
+  write: function(stream, buffer, offset, length, position) {
+   var sock = stream.node.sock;
+   return sock.sock_ops.sendmsg(sock, buffer, offset, length);
+  },
+  close: function(stream) {
+   var sock = stream.node.sock;
+   sock.sock_ops.close(sock);
+  }
+ },
+ nextname: function() {
+  if (!SOCKFS.nextname.current) {
+   SOCKFS.nextname.current = 0;
+  }
+  return "socket[" + SOCKFS.nextname.current++ + "]";
+ },
+ websocket_sock_ops: {
+  createPeer: function(sock, addr, port) {
+   var ws;
+   if (typeof addr === "object") {
+    ws = addr;
+    addr = null;
+    port = null;
+   }
+   if (ws) {
+    if (ws._socket) {
+     addr = ws._socket.remoteAddress;
+     port = ws._socket.remotePort;
+    } else {
+     var result = /ws[s]?:\/\/([^:]+):(\d+)/.exec(ws.url);
+     if (!result) {
+      throw new Error("WebSocket URL must be in the format ws(s)://address:port");
+     }
+     addr = result[1];
+     port = parseInt(result[2], 10);
+    }
+   } else {
+    try {
+     var runtimeConfig = Module["websocket"] && "object" === typeof Module["websocket"];
+     var url = "ws:#".replace("#", "//");
+     if (runtimeConfig) {
+      if ("string" === typeof Module["websocket"]["url"]) {
+       url = Module["websocket"]["url"];
+      }
+     }
+     if (url === "ws://" || url === "wss://") {
+      var parts = addr.split("/");
+      url = url + parts[0] + ":" + port + "/" + parts.slice(1).join("/");
+     }
+     var subProtocols = "binary";
+     if (runtimeConfig) {
+      if ("string" === typeof Module["websocket"]["subprotocol"]) {
+       subProtocols = Module["websocket"]["subprotocol"];
+      }
+     }
+     var opts = undefined;
+     if (subProtocols !== "null") {
+      subProtocols = subProtocols.replace(/^ +| +$/g, "").split(/ *, */);
+      opts = ENVIRONMENT_IS_NODE ? {
+       "protocol": subProtocols.toString()
+      } : subProtocols;
+     }
+     if (runtimeConfig && null === Module["websocket"]["subprotocol"]) {
+      subProtocols = "null";
+      opts = undefined;
+     }
+     var WebSocketConstructor;
+     if (ENVIRONMENT_IS_NODE) {
+      WebSocketConstructor = require("ws");
+     } else {
+      WebSocketConstructor = WebSocket;
+     }
+     ws = new WebSocketConstructor(url, opts);
+     ws.binaryType = "arraybuffer";
+    } catch (e) {
+     throw new FS.ErrnoError(23);
+    }
+   }
+   var peer = {
+    addr: addr,
+    port: port,
+    socket: ws,
+    dgram_send_queue: []
+   };
+   SOCKFS.websocket_sock_ops.addPeer(sock, peer);
+   SOCKFS.websocket_sock_ops.handlePeerEvents(sock, peer);
+   if (sock.type === 2 && typeof sock.sport !== "undefined") {
+    peer.dgram_send_queue.push(new Uint8Array([ 255, 255, 255, 255, "p".charCodeAt(0), "o".charCodeAt(0), "r".charCodeAt(0), "t".charCodeAt(0), (sock.sport & 65280) >> 8, sock.sport & 255 ]));
+   }
+   return peer;
+  },
+  getPeer: function(sock, addr, port) {
+   return sock.peers[addr + ":" + port];
+  },
+  addPeer: function(sock, peer) {
+   sock.peers[peer.addr + ":" + peer.port] = peer;
+  },
+  removePeer: function(sock, peer) {
+   delete sock.peers[peer.addr + ":" + peer.port];
+  },
+  handlePeerEvents: function(sock, peer) {
+   var first = true;
+   var handleOpen = function() {
+    Module["websocket"].emit("open", sock.stream.fd);
+    try {
+     var queued = peer.dgram_send_queue.shift();
+     while (queued) {
+      peer.socket.send(queued);
+      queued = peer.dgram_send_queue.shift();
+     }
+    } catch (e) {
+     peer.socket.close();
+    }
+   };
+   function handleMessage(data) {
+    if (typeof data === "string") {
+     var encoder = new TextEncoder();
+     data = encoder.encode(data);
+    } else {
+     assert(data.byteLength !== undefined);
+     if (data.byteLength == 0) {
+      return;
+     } else {
+      data = new Uint8Array(data);
+     }
+    }
+    var wasfirst = first;
+    first = false;
+    if (wasfirst && data.length === 10 && data[0] === 255 && data[1] === 255 && data[2] === 255 && data[3] === 255 && data[4] === "p".charCodeAt(0) && data[5] === "o".charCodeAt(0) && data[6] === "r".charCodeAt(0) && data[7] === "t".charCodeAt(0)) {
+     var newport = data[8] << 8 | data[9];
+     SOCKFS.websocket_sock_ops.removePeer(sock, peer);
+     peer.port = newport;
+     SOCKFS.websocket_sock_ops.addPeer(sock, peer);
+     return;
+    }
+    sock.recv_queue.push({
+     addr: peer.addr,
+     port: peer.port,
+     data: data
+    });
+    Module["websocket"].emit("message", sock.stream.fd);
+   }
+   if (ENVIRONMENT_IS_NODE) {
+    peer.socket.on("open", handleOpen);
+    peer.socket.on("message", function(data, flags) {
+     if (!flags.binary) {
+      return;
+     }
+     handleMessage(new Uint8Array(data).buffer);
+    });
+    peer.socket.on("close", function() {
+     Module["websocket"].emit("close", sock.stream.fd);
+    });
+    peer.socket.on("error", function(error) {
+     sock.error = 14;
+     Module["websocket"].emit("error", [ sock.stream.fd, sock.error, "ECONNREFUSED: Connection refused" ]);
+    });
+   } else {
+    peer.socket.onopen = handleOpen;
+    peer.socket.onclose = function() {
+     Module["websocket"].emit("close", sock.stream.fd);
+    };
+    peer.socket.onmessage = function peer_socket_onmessage(event) {
+     handleMessage(event.data);
+    };
+    peer.socket.onerror = function(error) {
+     sock.error = 14;
+     Module["websocket"].emit("error", [ sock.stream.fd, sock.error, "ECONNREFUSED: Connection refused" ]);
+    };
+   }
+  },
+  poll: function(sock) {
+   if (sock.type === 1 && sock.server) {
+    return sock.pending.length ? 64 | 1 : 0;
+   }
+   var mask = 0;
+   var dest = sock.type === 1 ? SOCKFS.websocket_sock_ops.getPeer(sock, sock.daddr, sock.dport) : null;
+   if (sock.recv_queue.length || !dest || dest && dest.socket.readyState === dest.socket.CLOSING || dest && dest.socket.readyState === dest.socket.CLOSED) {
+    mask |= 64 | 1;
+   }
+   if (!dest || dest && dest.socket.readyState === dest.socket.OPEN) {
+    mask |= 4;
+   }
+   if (dest && dest.socket.readyState === dest.socket.CLOSING || dest && dest.socket.readyState === dest.socket.CLOSED) {
+    mask |= 16;
+   }
+   return mask;
+  },
+  ioctl: function(sock, request, arg) {
+   switch (request) {
+   case 21531:
+    var bytes = 0;
+    if (sock.recv_queue.length) {
+     bytes = sock.recv_queue[0].data.length;
+    }
+    SAFE_HEAP_STORE(arg | 0, bytes | 0, 4);
+    return 0;
+
+   default:
+    return 28;
+   }
+  },
+  close: function(sock) {
+   if (sock.server) {
+    try {
+     sock.server.close();
+    } catch (e) {}
+    sock.server = null;
+   }
+   var peers = Object.keys(sock.peers);
+   for (var i = 0; i < peers.length; i++) {
+    var peer = sock.peers[peers[i]];
+    try {
+     peer.socket.close();
+    } catch (e) {}
+    SOCKFS.websocket_sock_ops.removePeer(sock, peer);
+   }
+   return 0;
+  },
+  bind: function(sock, addr, port) {
+   if (typeof sock.saddr !== "undefined" || typeof sock.sport !== "undefined") {
+    throw new FS.ErrnoError(28);
+   }
+   sock.saddr = addr;
+   sock.sport = port;
+   if (sock.type === 2) {
+    if (sock.server) {
+     sock.server.close();
+     sock.server = null;
+    }
+    try {
+     sock.sock_ops.listen(sock, 0);
+    } catch (e) {
+     if (!(e instanceof FS.ErrnoError)) throw e;
+     if (e.errno !== 138) throw e;
+    }
+   }
+  },
+  connect: function(sock, addr, port) {
+   if (sock.server) {
+    throw new FS.ErrnoError(138);
+   }
+   if (typeof sock.daddr !== "undefined" && typeof sock.dport !== "undefined") {
+    var dest = SOCKFS.websocket_sock_ops.getPeer(sock, sock.daddr, sock.dport);
+    if (dest) {
+     if (dest.socket.readyState === dest.socket.CONNECTING) {
+      throw new FS.ErrnoError(7);
+     } else {
+      throw new FS.ErrnoError(30);
+     }
+    }
+   }
+   var peer = SOCKFS.websocket_sock_ops.createPeer(sock, addr, port);
+   sock.daddr = peer.addr;
+   sock.dport = peer.port;
+   throw new FS.ErrnoError(26);
+  },
+  listen: function(sock, backlog) {
+   if (!ENVIRONMENT_IS_NODE) {
+    throw new FS.ErrnoError(138);
+   }
+   if (sock.server) {
+    throw new FS.ErrnoError(28);
+   }
+   var WebSocketServer = require("ws").Server;
+   var host = sock.saddr;
+   sock.server = new WebSocketServer({
+    host: host,
+    port: sock.sport
+   });
+   Module["websocket"].emit("listen", sock.stream.fd);
+   sock.server.on("connection", function(ws) {
+    if (sock.type === 1) {
+     var newsock = SOCKFS.createSocket(sock.family, sock.type, sock.protocol);
+     var peer = SOCKFS.websocket_sock_ops.createPeer(newsock, ws);
+     newsock.daddr = peer.addr;
+     newsock.dport = peer.port;
+     sock.pending.push(newsock);
+     Module["websocket"].emit("connection", newsock.stream.fd);
+    } else {
+     SOCKFS.websocket_sock_ops.createPeer(sock, ws);
+     Module["websocket"].emit("connection", sock.stream.fd);
+    }
+   });
+   sock.server.on("closed", function() {
+    Module["websocket"].emit("close", sock.stream.fd);
+    sock.server = null;
+   });
+   sock.server.on("error", function(error) {
+    sock.error = 23;
+    Module["websocket"].emit("error", [ sock.stream.fd, sock.error, "EHOSTUNREACH: Host is unreachable" ]);
+   });
+  },
+  accept: function(listensock) {
+   if (!listensock.server) {
+    throw new FS.ErrnoError(28);
+   }
+   var newsock = listensock.pending.shift();
+   newsock.stream.flags = listensock.stream.flags;
+   return newsock;
+  },
+  getname: function(sock, peer) {
+   var addr, port;
+   if (peer) {
+    if (sock.daddr === undefined || sock.dport === undefined) {
+     throw new FS.ErrnoError(53);
+    }
+    addr = sock.daddr;
+    port = sock.dport;
+   } else {
+    addr = sock.saddr || 0;
+    port = sock.sport || 0;
+   }
+   return {
+    addr: addr,
+    port: port
+   };
+  },
+  sendmsg: function(sock, buffer, offset, length, addr, port) {
+   if (sock.type === 2) {
+    if (addr === undefined || port === undefined) {
+     addr = sock.daddr;
+     port = sock.dport;
+    }
+    if (addr === undefined || port === undefined) {
+     throw new FS.ErrnoError(17);
+    }
+   } else {
+    addr = sock.daddr;
+    port = sock.dport;
+   }
+   var dest = SOCKFS.websocket_sock_ops.getPeer(sock, addr, port);
+   if (sock.type === 1) {
+    if (!dest || dest.socket.readyState === dest.socket.CLOSING || dest.socket.readyState === dest.socket.CLOSED) {
+     throw new FS.ErrnoError(53);
+    } else if (dest.socket.readyState === dest.socket.CONNECTING) {
+     throw new FS.ErrnoError(6);
+    }
+   }
+   if (ArrayBuffer.isView(buffer)) {
+    offset += buffer.byteOffset;
+    buffer = buffer.buffer;
+   }
+   var data;
+   data = buffer.slice(offset, offset + length);
+   if (sock.type === 2) {
+    if (!dest || dest.socket.readyState !== dest.socket.OPEN) {
+     if (!dest || dest.socket.readyState === dest.socket.CLOSING || dest.socket.readyState === dest.socket.CLOSED) {
+      dest = SOCKFS.websocket_sock_ops.createPeer(sock, addr, port);
+     }
+     dest.dgram_send_queue.push(data);
+     return length;
+    }
+   }
+   try {
+    dest.socket.send(data);
+    return length;
+   } catch (e) {
+    throw new FS.ErrnoError(28);
+   }
+  },
+  recvmsg: function(sock, length) {
+   if (sock.type === 1 && sock.server) {
+    throw new FS.ErrnoError(53);
+   }
+   var queued = sock.recv_queue.shift();
+   if (!queued) {
+    if (sock.type === 1) {
+     var dest = SOCKFS.websocket_sock_ops.getPeer(sock, sock.daddr, sock.dport);
+     if (!dest) {
+      throw new FS.ErrnoError(53);
+     } else if (dest.socket.readyState === dest.socket.CLOSING || dest.socket.readyState === dest.socket.CLOSED) {
+      return null;
+     } else {
+      throw new FS.ErrnoError(6);
+     }
+    } else {
+     throw new FS.ErrnoError(6);
+    }
+   }
+   var queuedLength = queued.data.byteLength || queued.data.length;
+   var queuedOffset = queued.data.byteOffset || 0;
+   var queuedBuffer = queued.data.buffer || queued.data;
+   var bytesRead = Math.min(length, queuedLength);
+   var res = {
+    buffer: new Uint8Array(queuedBuffer, queuedOffset, bytesRead),
+    addr: queued.addr,
+    port: queued.port
+   };
+   if (sock.type === 1 && bytesRead < queuedLength) {
+    var bytesRemaining = queuedLength - bytesRead;
+    queued.data = new Uint8Array(queuedBuffer, queuedOffset + bytesRead, bytesRemaining);
+    sock.recv_queue.unshift(queued);
+   }
+   return res;
+  }
+ }
+};
+
+function getSocketFromFD(fd) {
+ var socket = SOCKFS.getSocket(fd);
+ if (!socket) throw new FS.ErrnoError(8);
+ return socket;
+}
+
+function setErrNo(value) {
+ SAFE_HEAP_STORE(___errno_location() | 0, value | 0, 4);
+ return value;
+}
+
+var Sockets = {
+ BUFFER_SIZE: 10240,
+ MAX_BUFFER_SIZE: 10485760,
+ nextFd: 1,
+ fds: {},
+ nextport: 1,
+ maxport: 65535,
+ peer: null,
+ connections: {},
+ portmap: {},
+ localAddr: 4261412874,
+ addrPool: [ 33554442, 50331658, 67108874, 83886090, 100663306, 117440522, 134217738, 150994954, 167772170, 184549386, 201326602, 218103818, 234881034 ]
+};
+
+function inetNtop4(addr) {
+ return (addr & 255) + "." + (addr >> 8 & 255) + "." + (addr >> 16 & 255) + "." + (addr >> 24 & 255);
+}
+
+function inetNtop6(ints) {
+ var str = "";
+ var word = 0;
+ var longest = 0;
+ var lastzero = 0;
+ var zstart = 0;
+ var len = 0;
+ var i = 0;
+ var parts = [ ints[0] & 65535, ints[0] >> 16, ints[1] & 65535, ints[1] >> 16, ints[2] & 65535, ints[2] >> 16, ints[3] & 65535, ints[3] >> 16 ];
+ var hasipv4 = true;
+ var v4part = "";
+ for (i = 0; i < 5; i++) {
+  if (parts[i] !== 0) {
+   hasipv4 = false;
+   break;
+  }
+ }
+ if (hasipv4) {
+  v4part = inetNtop4(parts[6] | parts[7] << 16);
+  if (parts[5] === -1) {
+   str = "::ffff:";
+   str += v4part;
+   return str;
+  }
+  if (parts[5] === 0) {
+   str = "::";
+   if (v4part === "0.0.0.0") v4part = "";
+   if (v4part === "0.0.0.1") v4part = "1";
+   str += v4part;
+   return str;
+  }
+ }
+ for (word = 0; word < 8; word++) {
+  if (parts[word] === 0) {
+   if (word - lastzero > 1) {
+    len = 0;
+   }
+   lastzero = word;
+   len++;
+  }
+  if (len > longest) {
+   longest = len;
+   zstart = word - longest + 1;
+  }
+ }
+ for (word = 0; word < 8; word++) {
+  if (longest > 1) {
+   if (parts[word] === 0 && word >= zstart && word < zstart + longest) {
+    if (word === zstart) {
+     str += ":";
+     if (zstart === 0) str += ":";
+    }
+    continue;
+   }
+  }
+  str += Number(_ntohs(parts[word] & 65535)).toString(16);
+  str += word < 7 ? ":" : "";
+ }
+ return str;
+}
+
+function readSockaddr(sa, salen) {
+ var family = SAFE_HEAP_LOAD(sa | 0, 2, 0) | 0;
+ var port = _ntohs(SAFE_HEAP_LOAD(sa + 2 | 0, 2, 1) >>> 0);
+ var addr;
+ switch (family) {
+ case 2:
+  if (salen !== 16) {
+   return {
+    errno: 28
+   };
+  }
+  addr = SAFE_HEAP_LOAD(sa + 4 | 0, 4, 0) | 0;
+  addr = inetNtop4(addr);
+  break;
+
+ case 10:
+  if (salen !== 28) {
+   return {
+    errno: 28
+   };
+  }
+  addr = [ SAFE_HEAP_LOAD(sa + 8 | 0, 4, 0) | 0, SAFE_HEAP_LOAD(sa + 12 | 0, 4, 0) | 0, SAFE_HEAP_LOAD(sa + 16 | 0, 4, 0) | 0, SAFE_HEAP_LOAD(sa + 20 | 0, 4, 0) | 0 ];
+  addr = inetNtop6(addr);
+  break;
+
+ default:
+  return {
+   errno: 5
+  };
+ }
+ return {
+  family: family,
+  addr: addr,
+  port: port
+ };
+}
+
+function getSocketAddress(addrp, addrlen, allowNull) {
+ if (allowNull && addrp === 0) return null;
+ var info = readSockaddr(addrp, addrlen);
+ if (info.errno) throw new FS.ErrnoError(info.errno);
+ info.addr = DNS.lookup_addr(info.addr) || info.addr;
+ return info;
+}
+
+function ___sys_connect(fd, addr, addrlen) {
+ try {
+  var sock = getSocketFromFD(fd);
+  var info = getSocketAddress(addr, addrlen);
+  sock.sock_ops.connect(sock, info.addr, info.port);
+  return 0;
+ } catch (e) {
+  if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError)) abort(e);
+  return -e.errno;
+ }
+}
+
 function ___sys_fcntl64(fd, cmd, varargs) {
  SYSCALLS.varargs = varargs;
  try {
@@ -4542,6 +5476,24 @@ function ___sys_fcntl64(fd, cmd, varargs) {
     return -28;
    }
   }
+ } catch (e) {
+  if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError)) abort(e);
+  return -e.errno;
+ }
+}
+
+function ___sys_getsockopt(fd, level, optname, optval, optlen) {
+ try {
+  var sock = getSocketFromFD(fd);
+  if (level === 1) {
+   if (optname === 4) {
+    SAFE_HEAP_STORE(optval | 0, sock.error | 0, 4);
+    SAFE_HEAP_STORE(optlen | 0, 4 | 0, 4);
+    sock.error = null;
+    return 0;
+   }
+  }
+  return -50;
  } catch (e) {
   if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError)) abort(e);
   return -e.errno;
@@ -4619,6 +5571,175 @@ function ___sys_open(path, flags, varargs) {
   var mode = varargs ? SYSCALLS.get() : 0;
   var stream = FS.open(pathname, flags, mode);
   return stream.fd;
+ } catch (e) {
+  if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError)) abort(e);
+  return -e.errno;
+ }
+}
+
+function inetPton4(str) {
+ var b = str.split(".");
+ for (var i = 0; i < 4; i++) {
+  var tmp = Number(b[i]);
+  if (isNaN(tmp)) return null;
+  b[i] = tmp;
+ }
+ return (b[0] | b[1] << 8 | b[2] << 16 | b[3] << 24) >>> 0;
+}
+
+function jstoi_q(str) {
+ return parseInt(str);
+}
+
+function inetPton6(str) {
+ var words;
+ var w, offset, z, i;
+ var valid6regx = /^((?=.*::)(?!.*::.+::)(::)?([\dA-F]{1,4}:(:|\b)|){5}|([\dA-F]{1,4}:){6})((([\dA-F]{1,4}((?!\3)::|:\b|$))|(?!\2\3)){2}|(((2[0-4]|1\d|[1-9])?\d|25[0-5])\.?\b){4})$/i;
+ var parts = [];
+ if (!valid6regx.test(str)) {
+  return null;
+ }
+ if (str === "::") {
+  return [ 0, 0, 0, 0, 0, 0, 0, 0 ];
+ }
+ if (str.startsWith("::")) {
+  str = str.replace("::", "Z:");
+ } else {
+  str = str.replace("::", ":Z:");
+ }
+ if (str.indexOf(".") > 0) {
+  str = str.replace(new RegExp("[.]", "g"), ":");
+  words = str.split(":");
+  words[words.length - 4] = jstoi_q(words[words.length - 4]) + jstoi_q(words[words.length - 3]) * 256;
+  words[words.length - 3] = jstoi_q(words[words.length - 2]) + jstoi_q(words[words.length - 1]) * 256;
+  words = words.slice(0, words.length - 2);
+ } else {
+  words = str.split(":");
+ }
+ offset = 0;
+ z = 0;
+ for (w = 0; w < words.length; w++) {
+  if (typeof words[w] === "string") {
+   if (words[w] === "Z") {
+    for (z = 0; z < 8 - words.length + 1; z++) {
+     parts[w + z] = 0;
+    }
+    offset = z - 1;
+   } else {
+    parts[w + offset] = _htons(parseInt(words[w], 16));
+   }
+  } else {
+   parts[w + offset] = words[w];
+  }
+ }
+ return [ parts[1] << 16 | parts[0], parts[3] << 16 | parts[2], parts[5] << 16 | parts[4], parts[7] << 16 | parts[6] ];
+}
+
+function writeSockaddr(sa, family, addr, port, addrlen) {
+ switch (family) {
+ case 2:
+  addr = inetPton4(addr);
+  zeroMemory(sa, 16);
+  if (addrlen) {
+   SAFE_HEAP_STORE(addrlen | 0, 16 | 0, 4);
+  }
+  SAFE_HEAP_STORE(sa | 0, family | 0, 2);
+  SAFE_HEAP_STORE(sa + 4 | 0, addr | 0, 4);
+  SAFE_HEAP_STORE(sa + 2 | 0, _htons(port) | 0, 2);
+  break;
+
+ case 10:
+  addr = inetPton6(addr);
+  zeroMemory(sa, 28);
+  if (addrlen) {
+   SAFE_HEAP_STORE(addrlen | 0, 28 | 0, 4);
+  }
+  SAFE_HEAP_STORE(sa | 0, family | 0, 4);
+  SAFE_HEAP_STORE(sa + 8 | 0, addr[0] | 0, 4);
+  SAFE_HEAP_STORE(sa + 12 | 0, addr[1] | 0, 4);
+  SAFE_HEAP_STORE(sa + 16 | 0, addr[2] | 0, 4);
+  SAFE_HEAP_STORE(sa + 20 | 0, addr[3] | 0, 4);
+  SAFE_HEAP_STORE(sa + 2 | 0, _htons(port) | 0, 2);
+  break;
+
+ default:
+  return 5;
+ }
+ return 0;
+}
+
+var DNS = {
+ address_map: {
+  id: 1,
+  addrs: {},
+  names: {}
+ },
+ lookup_name: function(name) {
+  var res = inetPton4(name);
+  if (res !== null) {
+   return name;
+  }
+  res = inetPton6(name);
+  if (res !== null) {
+   return name;
+  }
+  var addr;
+  if (DNS.address_map.addrs[name]) {
+   addr = DNS.address_map.addrs[name];
+  } else {
+   var id = DNS.address_map.id++;
+   assert(id < 65535, "exceeded max address mappings of 65535");
+   addr = "172.29." + (id & 255) + "." + (id & 65280);
+   DNS.address_map.names[addr] = name;
+   DNS.address_map.addrs[name] = addr;
+  }
+  return addr;
+ },
+ lookup_addr: function(addr) {
+  if (DNS.address_map.names[addr]) {
+   return DNS.address_map.names[addr];
+  }
+  return null;
+ }
+};
+
+function ___sys_recvfrom(fd, buf, len, flags, addr, addrlen) {
+ try {
+  var sock = getSocketFromFD(fd);
+  var msg = sock.sock_ops.recvmsg(sock, len);
+  if (!msg) return 0;
+  if (addr) {
+   var errno = writeSockaddr(addr, sock.family, DNS.lookup_name(msg.addr), msg.port, addrlen);
+   assert(!errno);
+  }
+  HEAPU8.set(msg.buffer, buf);
+  return msg.buffer.byteLength;
+ } catch (e) {
+  if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError)) abort(e);
+  return -e.errno;
+ }
+}
+
+function ___sys_sendto(fd, message, length, flags, addr, addr_len) {
+ try {
+  var sock = getSocketFromFD(fd);
+  var dest = getSocketAddress(addr, addr_len, true);
+  if (!dest) {
+   return FS.write(sock.stream, HEAP8, message, length);
+  } else {
+   return sock.sock_ops.sendmsg(sock, HEAP8, message, length, dest.addr, dest.port);
+  }
+ } catch (e) {
+  if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError)) abort(e);
+  return -e.errno;
+ }
+}
+
+function ___sys_socket(domain, type, protocol) {
+ try {
+  var sock = SOCKFS.createSocket(domain, type, protocol);
+  assert(sock.stream.fd < 64);
+  return sock.stream.fd;
  } catch (e) {
   if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError)) abort(e);
   return -e.errno;
@@ -5815,6 +6936,11 @@ function _emscripten_asm_const_int(code, sigPtr, argbuf) {
  var args = readAsmConstArgs(sigPtr, argbuf);
  if (!ASM_CONSTS.hasOwnProperty(code)) abort("No EM_ASM constant found at address " + code);
  return ASM_CONSTS[code].apply(null, args);
+}
+
+function _emscripten_cancel_main_loop() {
+ Browser.mainLoop.pause();
+ Browser.mainLoop.func = null;
 }
 
 var JSEvents = {
@@ -7480,10 +8606,6 @@ function _emscripten_glGetUniformIndices(program, uniformCount, uniformNames, un
  }
 }
 
-function jstoi_q(str) {
- return parseInt(str);
-}
-
 function webglGetLeftBracePos(name) {
  return name.slice(-1) == "]" && name.lastIndexOf("[");
 }
@@ -8372,6 +9494,32 @@ function _emscripten_resize_heap(requestedSize) {
  return false;
 }
 
+function registerFocusEventCallback(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
+ if (!JSEvents.focusEvent) JSEvents.focusEvent = _malloc(256);
+ var focusEventHandlerFunc = function(ev) {
+  var e = ev || event;
+  var nodeName = JSEvents.getNodeNameForTarget(e.target);
+  var id = e.target.id ? e.target.id : "";
+  var focusEvent = JSEvents.focusEvent;
+  stringToUTF8(nodeName, focusEvent + 0, 128);
+  stringToUTF8(id, focusEvent + 128, 128);
+  if (wasmTable.get(callbackfunc)(eventTypeId, focusEvent, userData)) e.preventDefault();
+ };
+ var eventHandler = {
+  target: findEventTarget(target),
+  eventTypeString: eventTypeString,
+  callbackfunc: callbackfunc,
+  handlerFunc: focusEventHandlerFunc,
+  useCapture: useCapture
+ };
+ JSEvents.registerOrRemoveHandler(eventHandler);
+}
+
+function _emscripten_set_blur_callback_on_thread(target, userData, useCapture, callbackfunc, targetThread) {
+ registerFocusEventCallback(target, userData, useCapture, callbackfunc, 12, "blur", targetThread);
+ return 0;
+}
+
 function _emscripten_set_canvas_element_size(target, width, height) {
  var canvas = findCanvasEventTarget(target);
  if (!canvas) return -4;
@@ -8380,9 +9528,230 @@ function _emscripten_set_canvas_element_size(target, width, height) {
  return 0;
 }
 
+function _emscripten_set_focus_callback_on_thread(target, userData, useCapture, callbackfunc, targetThread) {
+ registerFocusEventCallback(target, userData, useCapture, callbackfunc, 13, "focus", targetThread);
+ return 0;
+}
+
+function registerKeyEventCallback(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
+ if (!JSEvents.keyEvent) JSEvents.keyEvent = _malloc(164);
+ var keyEventHandlerFunc = function(e) {
+  assert(e);
+  var keyEventData = JSEvents.keyEvent;
+  var idx = keyEventData >> 2;
+  SAFE_HEAP_STORE((idx + 0) * 4, e.location, 4);
+  SAFE_HEAP_STORE((idx + 1) * 4, e.ctrlKey, 4);
+  SAFE_HEAP_STORE((idx + 2) * 4, e.shiftKey, 4);
+  SAFE_HEAP_STORE((idx + 3) * 4, e.altKey, 4);
+  SAFE_HEAP_STORE((idx + 4) * 4, e.metaKey, 4);
+  SAFE_HEAP_STORE((idx + 5) * 4, e.repeat, 4);
+  SAFE_HEAP_STORE((idx + 6) * 4, e.charCode, 4);
+  SAFE_HEAP_STORE((idx + 7) * 4, e.keyCode, 4);
+  SAFE_HEAP_STORE((idx + 8) * 4, e.which, 4);
+  stringToUTF8(e.key || "", keyEventData + 36, 32);
+  stringToUTF8(e.code || "", keyEventData + 68, 32);
+  stringToUTF8(e.char || "", keyEventData + 100, 32);
+  stringToUTF8(e.locale || "", keyEventData + 132, 32);
+  if (wasmTable.get(callbackfunc)(eventTypeId, keyEventData, userData)) e.preventDefault();
+ };
+ var eventHandler = {
+  target: findEventTarget(target),
+  allowsDeferredCalls: true,
+  eventTypeString: eventTypeString,
+  callbackfunc: callbackfunc,
+  handlerFunc: keyEventHandlerFunc,
+  useCapture: useCapture
+ };
+ JSEvents.registerOrRemoveHandler(eventHandler);
+}
+
+function _emscripten_set_keydown_callback_on_thread(target, userData, useCapture, callbackfunc, targetThread) {
+ registerKeyEventCallback(target, userData, useCapture, callbackfunc, 2, "keydown", targetThread);
+ return 0;
+}
+
+function _emscripten_set_keyup_callback_on_thread(target, userData, useCapture, callbackfunc, targetThread) {
+ registerKeyEventCallback(target, userData, useCapture, callbackfunc, 3, "keyup", targetThread);
+ return 0;
+}
+
 function _emscripten_set_main_loop(func, fps, simulateInfiniteLoop) {
  var browserIterationFunc = wasmTable.get(func);
  setMainLoop(browserIterationFunc, fps, simulateInfiniteLoop);
+}
+
+function getBoundingClientRect(e) {
+ return specialHTMLTargets.indexOf(e) < 0 ? e.getBoundingClientRect() : {
+  "left": 0,
+  "top": 0
+ };
+}
+
+function fillMouseEventData(eventStruct, e, target) {
+ assert(eventStruct % 4 == 0);
+ var idx = eventStruct >> 2;
+ SAFE_HEAP_STORE((idx + 0) * 4, e.screenX, 4);
+ SAFE_HEAP_STORE((idx + 1) * 4, e.screenY, 4);
+ SAFE_HEAP_STORE((idx + 2) * 4, e.clientX, 4);
+ SAFE_HEAP_STORE((idx + 3) * 4, e.clientY, 4);
+ SAFE_HEAP_STORE((idx + 4) * 4, e.ctrlKey, 4);
+ SAFE_HEAP_STORE((idx + 5) * 4, e.shiftKey, 4);
+ SAFE_HEAP_STORE((idx + 6) * 4, e.altKey, 4);
+ SAFE_HEAP_STORE((idx + 7) * 4, e.metaKey, 4);
+ SAFE_HEAP_STORE((idx * 2 + 16) * 2, e.button, 2);
+ SAFE_HEAP_STORE((idx * 2 + 17) * 2, e.buttons, 2);
+ SAFE_HEAP_STORE((idx + 9) * 4, e["movementX"], 4);
+ SAFE_HEAP_STORE((idx + 10) * 4, e["movementY"], 4);
+ var rect = getBoundingClientRect(target);
+ SAFE_HEAP_STORE((idx + 11) * 4, e.clientX - rect.left, 4);
+ SAFE_HEAP_STORE((idx + 12) * 4, e.clientY - rect.top, 4);
+}
+
+function registerMouseEventCallback(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
+ if (!JSEvents.mouseEvent) JSEvents.mouseEvent = _malloc(64);
+ target = findEventTarget(target);
+ var mouseEventHandlerFunc = function(ev) {
+  var e = ev || event;
+  fillMouseEventData(JSEvents.mouseEvent, e, target);
+  if (wasmTable.get(callbackfunc)(eventTypeId, JSEvents.mouseEvent, userData)) e.preventDefault();
+ };
+ var eventHandler = {
+  target: target,
+  allowsDeferredCalls: eventTypeString != "mousemove" && eventTypeString != "mouseenter" && eventTypeString != "mouseleave",
+  eventTypeString: eventTypeString,
+  callbackfunc: callbackfunc,
+  handlerFunc: mouseEventHandlerFunc,
+  useCapture: useCapture
+ };
+ JSEvents.registerOrRemoveHandler(eventHandler);
+}
+
+function _emscripten_set_mousedown_callback_on_thread(target, userData, useCapture, callbackfunc, targetThread) {
+ registerMouseEventCallback(target, userData, useCapture, callbackfunc, 5, "mousedown", targetThread);
+ return 0;
+}
+
+function _emscripten_set_mousemove_callback_on_thread(target, userData, useCapture, callbackfunc, targetThread) {
+ registerMouseEventCallback(target, userData, useCapture, callbackfunc, 8, "mousemove", targetThread);
+ return 0;
+}
+
+function _emscripten_set_mouseup_callback_on_thread(target, userData, useCapture, callbackfunc, targetThread) {
+ registerMouseEventCallback(target, userData, useCapture, callbackfunc, 6, "mouseup", targetThread);
+ return 0;
+}
+
+function registerTouchEventCallback(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
+ if (!JSEvents.touchEvent) JSEvents.touchEvent = _malloc(1684);
+ target = findEventTarget(target);
+ var touchEventHandlerFunc = function(e) {
+  assert(e);
+  var touches = {};
+  var et = e.touches;
+  for (var i = 0; i < et.length; ++i) {
+   var touch = et[i];
+   assert(!touch.isChanged);
+   assert(!touch.onTarget);
+   touches[touch.identifier] = touch;
+  }
+  et = e.changedTouches;
+  for (var i = 0; i < et.length; ++i) {
+   var touch = et[i];
+   assert(!touch.onTarget);
+   touch.isChanged = 1;
+   touches[touch.identifier] = touch;
+  }
+  et = e.targetTouches;
+  for (var i = 0; i < et.length; ++i) {
+   touches[et[i].identifier].onTarget = 1;
+  }
+  var touchEvent = JSEvents.touchEvent;
+  var idx = touchEvent >> 2;
+  SAFE_HEAP_STORE((idx + 1) * 4, e.ctrlKey, 4);
+  SAFE_HEAP_STORE((idx + 2) * 4, e.shiftKey, 4);
+  SAFE_HEAP_STORE((idx + 3) * 4, e.altKey, 4);
+  SAFE_HEAP_STORE((idx + 4) * 4, e.metaKey, 4);
+  idx += 5;
+  var targetRect = getBoundingClientRect(target);
+  var numTouches = 0;
+  for (var i in touches) {
+   var t = touches[i];
+   SAFE_HEAP_STORE((idx + 0) * 4, t.identifier, 4);
+   SAFE_HEAP_STORE((idx + 1) * 4, t.screenX, 4);
+   SAFE_HEAP_STORE((idx + 2) * 4, t.screenY, 4);
+   SAFE_HEAP_STORE((idx + 3) * 4, t.clientX, 4);
+   SAFE_HEAP_STORE((idx + 4) * 4, t.clientY, 4);
+   SAFE_HEAP_STORE((idx + 5) * 4, t.pageX, 4);
+   SAFE_HEAP_STORE((idx + 6) * 4, t.pageY, 4);
+   SAFE_HEAP_STORE((idx + 7) * 4, t.isChanged, 4);
+   SAFE_HEAP_STORE((idx + 8) * 4, t.onTarget, 4);
+   SAFE_HEAP_STORE((idx + 9) * 4, t.clientX - targetRect.left, 4);
+   SAFE_HEAP_STORE((idx + 10) * 4, t.clientY - targetRect.top, 4);
+   idx += 13;
+   if (++numTouches > 31) {
+    break;
+   }
+  }
+  SAFE_HEAP_STORE(touchEvent | 0, numTouches | 0, 4);
+  if (wasmTable.get(callbackfunc)(eventTypeId, touchEvent, userData)) e.preventDefault();
+ };
+ var eventHandler = {
+  target: target,
+  allowsDeferredCalls: eventTypeString == "touchstart" || eventTypeString == "touchend",
+  eventTypeString: eventTypeString,
+  callbackfunc: callbackfunc,
+  handlerFunc: touchEventHandlerFunc,
+  useCapture: useCapture
+ };
+ JSEvents.registerOrRemoveHandler(eventHandler);
+}
+
+function _emscripten_set_touchend_callback_on_thread(target, userData, useCapture, callbackfunc, targetThread) {
+ registerTouchEventCallback(target, userData, useCapture, callbackfunc, 23, "touchend", targetThread);
+ return 0;
+}
+
+function _emscripten_set_touchmove_callback_on_thread(target, userData, useCapture, callbackfunc, targetThread) {
+ registerTouchEventCallback(target, userData, useCapture, callbackfunc, 24, "touchmove", targetThread);
+ return 0;
+}
+
+function _emscripten_set_touchstart_callback_on_thread(target, userData, useCapture, callbackfunc, targetThread) {
+ registerTouchEventCallback(target, userData, useCapture, callbackfunc, 22, "touchstart", targetThread);
+ return 0;
+}
+
+function registerWheelEventCallback(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
+ if (!JSEvents.wheelEvent) JSEvents.wheelEvent = _malloc(96);
+ var wheelHandlerFunc = function(ev) {
+  var e = ev || event;
+  var wheelEvent = JSEvents.wheelEvent;
+  fillMouseEventData(wheelEvent, e, target);
+  SAFE_HEAP_STORE_D(wheelEvent + 64 | 0, +e["deltaX"], 8);
+  SAFE_HEAP_STORE_D(wheelEvent + 72 | 0, +e["deltaY"], 8);
+  SAFE_HEAP_STORE_D(wheelEvent + 80 | 0, +e["deltaZ"], 8);
+  SAFE_HEAP_STORE(wheelEvent + 88 | 0, e["deltaMode"] | 0, 4);
+  if (wasmTable.get(callbackfunc)(eventTypeId, wheelEvent, userData)) e.preventDefault();
+ };
+ var eventHandler = {
+  target: target,
+  allowsDeferredCalls: true,
+  eventTypeString: eventTypeString,
+  callbackfunc: callbackfunc,
+  handlerFunc: wheelHandlerFunc,
+  useCapture: useCapture
+ };
+ JSEvents.registerOrRemoveHandler(eventHandler);
+}
+
+function _emscripten_set_wheel_callback_on_thread(target, userData, useCapture, callbackfunc, targetThread) {
+ target = findEventTarget(target);
+ if (typeof target.onwheel !== "undefined") {
+  registerWheelEventCallback(target, userData, useCapture, callbackfunc, 9, "wheel", targetThread);
+  return 0;
+ } else {
+  return -1;
+ }
 }
 
 function _emscripten_set_window_title(title) {
@@ -8442,6 +9811,140 @@ function _fd_write(fd, iov, iovcnt, pnum) {
   if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError)) abort(e);
   return e.errno;
  }
+}
+
+function _getaddrinfo(node, service, hint, out) {
+ var addrs = [];
+ var canon = null;
+ var addr = 0;
+ var port = 0;
+ var flags = 0;
+ var family = 0;
+ var type = 0;
+ var proto = 0;
+ var ai, last;
+ function allocaddrinfo(family, type, proto, canon, addr, port) {
+  var sa, salen, ai;
+  var errno;
+  salen = family === 10 ? 28 : 16;
+  addr = family === 10 ? inetNtop6(addr) : inetNtop4(addr);
+  sa = _malloc(salen);
+  errno = writeSockaddr(sa, family, addr, port);
+  assert(!errno);
+  ai = _malloc(32);
+  SAFE_HEAP_STORE(ai + 4 | 0, family | 0, 4);
+  SAFE_HEAP_STORE(ai + 8 | 0, type | 0, 4);
+  SAFE_HEAP_STORE(ai + 12 | 0, proto | 0, 4);
+  SAFE_HEAP_STORE(ai + 24 | 0, canon | 0, 4);
+  SAFE_HEAP_STORE(ai + 20 | 0, sa | 0, 4);
+  if (family === 10) {
+   SAFE_HEAP_STORE(ai + 16 | 0, 28 | 0, 4);
+  } else {
+   SAFE_HEAP_STORE(ai + 16 | 0, 16 | 0, 4);
+  }
+  SAFE_HEAP_STORE(ai + 28 | 0, 0 | 0, 4);
+  return ai;
+ }
+ if (hint) {
+  flags = SAFE_HEAP_LOAD(hint | 0, 4, 0) | 0;
+  family = SAFE_HEAP_LOAD(hint + 4 | 0, 4, 0) | 0;
+  type = SAFE_HEAP_LOAD(hint + 8 | 0, 4, 0) | 0;
+  proto = SAFE_HEAP_LOAD(hint + 12 | 0, 4, 0) | 0;
+ }
+ if (type && !proto) {
+  proto = type === 2 ? 17 : 6;
+ }
+ if (!type && proto) {
+  type = proto === 17 ? 2 : 1;
+ }
+ if (proto === 0) {
+  proto = 6;
+ }
+ if (type === 0) {
+  type = 1;
+ }
+ if (!node && !service) {
+  return -2;
+ }
+ if (flags & ~(1 | 2 | 4 | 1024 | 8 | 16 | 32)) {
+  return -1;
+ }
+ if (hint !== 0 && (SAFE_HEAP_LOAD(hint | 0, 4, 0) | 0) & 2 && !node) {
+  return -1;
+ }
+ if (flags & 32) {
+  return -2;
+ }
+ if (type !== 0 && type !== 1 && type !== 2) {
+  return -7;
+ }
+ if (family !== 0 && family !== 2 && family !== 10) {
+  return -6;
+ }
+ if (service) {
+  service = UTF8ToString(service);
+  port = parseInt(service, 10);
+  if (isNaN(port)) {
+   if (flags & 1024) {
+    return -2;
+   }
+   return -8;
+  }
+ }
+ if (!node) {
+  if (family === 0) {
+   family = 2;
+  }
+  if ((flags & 1) === 0) {
+   if (family === 2) {
+    addr = _htonl(2130706433);
+   } else {
+    addr = [ 0, 0, 0, 1 ];
+   }
+  }
+  ai = allocaddrinfo(family, type, proto, null, addr, port);
+  SAFE_HEAP_STORE(out | 0, ai | 0, 4);
+  return 0;
+ }
+ node = UTF8ToString(node);
+ addr = inetPton4(node);
+ if (addr !== null) {
+  if (family === 0 || family === 2) {
+   family = 2;
+  } else if (family === 10 && flags & 8) {
+   addr = [ 0, 0, _htonl(65535), addr ];
+   family = 10;
+  } else {
+   return -2;
+  }
+ } else {
+  addr = inetPton6(node);
+  if (addr !== null) {
+   if (family === 0 || family === 10) {
+    family = 10;
+   } else {
+    return -2;
+   }
+  }
+ }
+ if (addr != null) {
+  ai = allocaddrinfo(family, type, proto, node, addr, port);
+  SAFE_HEAP_STORE(out | 0, ai | 0, 4);
+  return 0;
+ }
+ if (flags & 4) {
+  return -2;
+ }
+ node = DNS.lookup_name(node);
+ addr = inetPton4(node);
+ if (family === 0) {
+  family = 2;
+ } else if (family === 10) {
+  addr = [ 0, 0, _htonl(65535), addr ];
+ }
+ ai = allocaddrinfo(family, type, proto, null, addr, port);
+ SAFE_HEAP_STORE(out | 0, ai | 0, 4);
+ return 0;
 }
 
 function _glBindTexture(target, texture) {
@@ -8891,6 +10394,18 @@ FS.FSNode = FSNode;
 
 FS.staticInit();
 
+Module["FS_createPath"] = FS.createPath;
+
+Module["FS_createDataFile"] = FS.createDataFile;
+
+Module["FS_createPreloadedFile"] = FS.createPreloadedFile;
+
+Module["FS_createLazyFile"] = FS.createLazyFile;
+
+Module["FS_createDevice"] = FS.createDevice;
+
+Module["FS_unlink"] = FS.unlink;
+
 Module["requestFullscreen"] = function Module_requestFullscreen(lockPointer, resizeCanvas) {
  Browser.requestFullscreen(lockPointer, resizeCanvas);
 };
@@ -8952,12 +10467,69 @@ function intArrayToString(array) {
  return ret.join("");
 }
 
+var decodeBase64 = typeof atob === "function" ? atob : function(input) {
+ var keyStr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+ var output = "";
+ var chr1, chr2, chr3;
+ var enc1, enc2, enc3, enc4;
+ var i = 0;
+ input = input.replace(/[^A-Za-z0-9\+\/\=]/g, "");
+ do {
+  enc1 = keyStr.indexOf(input.charAt(i++));
+  enc2 = keyStr.indexOf(input.charAt(i++));
+  enc3 = keyStr.indexOf(input.charAt(i++));
+  enc4 = keyStr.indexOf(input.charAt(i++));
+  chr1 = enc1 << 2 | enc2 >> 4;
+  chr2 = (enc2 & 15) << 4 | enc3 >> 2;
+  chr3 = (enc3 & 3) << 6 | enc4;
+  output = output + String.fromCharCode(chr1);
+  if (enc3 !== 64) {
+   output = output + String.fromCharCode(chr2);
+  }
+  if (enc4 !== 64) {
+   output = output + String.fromCharCode(chr3);
+  }
+ } while (i < input.length);
+ return output;
+};
+
+function intArrayFromBase64(s) {
+ if (typeof ENVIRONMENT_IS_NODE === "boolean" && ENVIRONMENT_IS_NODE) {
+  var buf = Buffer.from(s, "base64");
+  return new Uint8Array(buf["buffer"], buf["byteOffset"], buf["byteLength"]);
+ }
+ try {
+  var decoded = decodeBase64(s);
+  var bytes = new Uint8Array(decoded.length);
+  for (var i = 0; i < decoded.length; ++i) {
+   bytes[i] = decoded.charCodeAt(i);
+  }
+  return bytes;
+ } catch (_) {
+  throw new Error("Converting base64 string to bytes failed.");
+ }
+}
+
+function tryParseAsDataURI(filename) {
+ if (!isDataURI(filename)) {
+  return;
+ }
+ return intArrayFromBase64(filename.slice(dataURIPrefix.length));
+}
+
 var asmLibraryArg = {
  "__assert_fail": ___assert_fail,
+ "__handle_stack_overflow": ___handle_stack_overflow,
  "__localtime_r": ___localtime_r,
+ "__sys__newselect": ___sys__newselect,
+ "__sys_connect": ___sys_connect,
  "__sys_fcntl64": ___sys_fcntl64,
+ "__sys_getsockopt": ___sys_getsockopt,
  "__sys_ioctl": ___sys_ioctl,
  "__sys_open": ___sys_open,
+ "__sys_recvfrom": ___sys_recvfrom,
+ "__sys_sendto": ___sys_sendto,
+ "__sys_socket": ___sys_socket,
  "abort": _abort,
  "alignfault": alignfault,
  "clock": _clock,
@@ -8970,6 +10542,7 @@ var asmLibraryArg = {
  "eglMakeCurrent": _eglMakeCurrent,
  "eglSwapBuffers": _eglSwapBuffers,
  "emscripten_asm_const_int": _emscripten_asm_const_int,
+ "emscripten_cancel_main_loop": _emscripten_cancel_main_loop,
  "emscripten_get_canvas_element_size": _emscripten_get_canvas_element_size,
  "emscripten_get_window_title": _emscripten_get_window_title,
  "emscripten_glActiveTexture": _emscripten_glActiveTexture,
@@ -9249,13 +10822,25 @@ var asmLibraryArg = {
  "emscripten_glWaitSync": _emscripten_glWaitSync,
  "emscripten_memcpy_big": _emscripten_memcpy_big,
  "emscripten_resize_heap": _emscripten_resize_heap,
+ "emscripten_set_blur_callback_on_thread": _emscripten_set_blur_callback_on_thread,
  "emscripten_set_canvas_element_size": _emscripten_set_canvas_element_size,
+ "emscripten_set_focus_callback_on_thread": _emscripten_set_focus_callback_on_thread,
+ "emscripten_set_keydown_callback_on_thread": _emscripten_set_keydown_callback_on_thread,
+ "emscripten_set_keyup_callback_on_thread": _emscripten_set_keyup_callback_on_thread,
  "emscripten_set_main_loop": _emscripten_set_main_loop,
+ "emscripten_set_mousedown_callback_on_thread": _emscripten_set_mousedown_callback_on_thread,
+ "emscripten_set_mousemove_callback_on_thread": _emscripten_set_mousemove_callback_on_thread,
+ "emscripten_set_mouseup_callback_on_thread": _emscripten_set_mouseup_callback_on_thread,
+ "emscripten_set_touchend_callback_on_thread": _emscripten_set_touchend_callback_on_thread,
+ "emscripten_set_touchmove_callback_on_thread": _emscripten_set_touchmove_callback_on_thread,
+ "emscripten_set_touchstart_callback_on_thread": _emscripten_set_touchstart_callback_on_thread,
+ "emscripten_set_wheel_callback_on_thread": _emscripten_set_wheel_callback_on_thread,
  "emscripten_set_window_title": _emscripten_set_window_title,
  "fd_close": _fd_close,
  "fd_read": _fd_read,
  "fd_seek": _fd_seek,
  "fd_write": _fd_write,
+ "getaddrinfo": _getaddrinfo,
  "glBindTexture": _glBindTexture,
  "glClear": _glClear,
  "glClearColor": _glClearColor,
@@ -9283,6 +10868,8 @@ var asm = createWasm();
 
 var ___wasm_call_ctors = Module["___wasm_call_ctors"] = createExportWrapper("__wasm_call_ctors");
 
+var _ara_em_update_window_size = Module["_ara_em_update_window_size"] = createExportWrapper("ara_em_update_window_size");
+
 var _malloc = Module["_malloc"] = createExportWrapper("malloc");
 
 var _free = Module["_free"] = createExportWrapper("free");
@@ -9295,7 +10882,7 @@ var _ma_device_process_pcm_frames_capture__webaudio = Module["_ma_device_process
 
 var _ma_device_process_pcm_frames_playback__webaudio = Module["_ma_device_process_pcm_frames_playback__webaudio"] = createExportWrapper("ma_device_process_pcm_frames_playback__webaudio");
 
-var _a_more_uniuqe_update = Module["_a_more_uniuqe_update"] = createExportWrapper("a_more_uniuqe_update");
+var _emscripten_update = Module["_emscripten_update"] = createExportWrapper("emscripten_update");
 
 var _main = Module["_main"] = createExportWrapper("main");
 
@@ -9308,6 +10895,12 @@ var _emscripten_stack_get_base = Module["_emscripten_stack_get_base"] = function
 var _emscripten_stack_get_end = Module["_emscripten_stack_get_end"] = function() {
  return (_emscripten_stack_get_end = Module["_emscripten_stack_get_end"] = Module["asm"]["emscripten_stack_get_end"]).apply(null, arguments);
 };
+
+var _htonl = Module["_htonl"] = createExportWrapper("htonl");
+
+var _htons = Module["_htons"] = createExportWrapper("htons");
+
+var _ntohs = Module["_ntohs"] = createExportWrapper("ntohs");
 
 var __get_tzname = Module["__get_tzname"] = createExportWrapper("_get_tzname");
 
@@ -9333,11 +10926,11 @@ var _saveSetjmp = Module["_saveSetjmp"] = createExportWrapper("saveSetjmp");
 
 var _setThrew = Module["_setThrew"] = createExportWrapper("setThrew");
 
-var ___cxa_demangle = Module["___cxa_demangle"] = createExportWrapper("__cxa_demangle");
-
 var _sbrk = Module["_sbrk"] = createExportWrapper("sbrk");
 
 var _emscripten_get_sbrk_ptr = Module["_emscripten_get_sbrk_ptr"] = createExportWrapper("emscripten_get_sbrk_ptr");
+
+var ___set_stack_limits = Module["___set_stack_limits"] = createExportWrapper("__set_stack_limits");
 
 var dynCall_iiji = Module["dynCall_iiji"] = createExportWrapper("dynCall_iiji");
 
@@ -9431,45 +11024,29 @@ if (!Object.getOwnPropertyDescriptor(Module, "writeAsciiToMemory")) Module["writ
  abort("'writeAsciiToMemory' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)");
 };
 
-if (!Object.getOwnPropertyDescriptor(Module, "addRunDependency")) Module["addRunDependency"] = function() {
- abort("'addRunDependency' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
-};
+Module["addRunDependency"] = addRunDependency;
 
-if (!Object.getOwnPropertyDescriptor(Module, "removeRunDependency")) Module["removeRunDependency"] = function() {
- abort("'removeRunDependency' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
-};
+Module["removeRunDependency"] = removeRunDependency;
 
 if (!Object.getOwnPropertyDescriptor(Module, "FS_createFolder")) Module["FS_createFolder"] = function() {
  abort("'FS_createFolder' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)");
 };
 
-if (!Object.getOwnPropertyDescriptor(Module, "FS_createPath")) Module["FS_createPath"] = function() {
- abort("'FS_createPath' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
-};
+Module["FS_createPath"] = FS.createPath;
 
-if (!Object.getOwnPropertyDescriptor(Module, "FS_createDataFile")) Module["FS_createDataFile"] = function() {
- abort("'FS_createDataFile' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
-};
+Module["FS_createDataFile"] = FS.createDataFile;
 
-if (!Object.getOwnPropertyDescriptor(Module, "FS_createPreloadedFile")) Module["FS_createPreloadedFile"] = function() {
- abort("'FS_createPreloadedFile' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
-};
+Module["FS_createPreloadedFile"] = FS.createPreloadedFile;
 
-if (!Object.getOwnPropertyDescriptor(Module, "FS_createLazyFile")) Module["FS_createLazyFile"] = function() {
- abort("'FS_createLazyFile' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
-};
+Module["FS_createLazyFile"] = FS.createLazyFile;
 
 if (!Object.getOwnPropertyDescriptor(Module, "FS_createLink")) Module["FS_createLink"] = function() {
  abort("'FS_createLink' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)");
 };
 
-if (!Object.getOwnPropertyDescriptor(Module, "FS_createDevice")) Module["FS_createDevice"] = function() {
- abort("'FS_createDevice' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
-};
+Module["FS_createDevice"] = FS.createDevice;
 
-if (!Object.getOwnPropertyDescriptor(Module, "FS_unlink")) Module["FS_unlink"] = function() {
- abort("'FS_unlink' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
-};
+Module["FS_unlink"] = FS.unlink;
 
 if (!Object.getOwnPropertyDescriptor(Module, "getLEB")) Module["getLEB"] = function() {
  abort("'getLEB' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ)");

@@ -6,9 +6,9 @@
     <title>Emscripten-Generated Code</title>
     <style>
       .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
-      textarea.emscripten { font-family: monospace; width: 80%; }
+      textarea.emscripten { font-family: monospace; width: 100%; }
       div.emscripten { text-align: center; }
-      div.emscripten_border { border: 1px solid black; }
+      div.emscripten_border { border: 1px solid black;  height: 100%; }
       /* the canvas *must not* have any border or padding, or mouse coords will be wrong */
       canvas.emscripten { border: 0px none; background-color: black; }
 
@@ -53,22 +53,33 @@
     <div class="emscripten">
       <progress value="0" max="100" id="progress" hidden=1></progress>  
     </div>
-    <div class="emscripten_border">
+    <div style="width: 100%; height: 100%;">
       <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex=-1></canvas>
     </div>
     <hr/>
     <div class="emscripten">
+      <!--
       <input type="checkbox" id="resize">Resize canvas
       <input type="checkbox" id="pointerLock" checked>Lock/hide mouse pointer
       &nbsp;&nbsp;&nbsp;
       <input type="button" value="Fullscreen" onclick="Module.requestFullscreen(document.getElementById('pointerLock').checked, 
                                                                                 document.getElementById('resize').checked)">
-	  <input type="button" value="Load Script" onclick="open_file_selector()">
+      -->
+      <input type="button" value="Load Script" onclick="open_file_selector()">
+	  <input type="button" value="Recompile Script" onclick="recompile_script()">
+
     </div>
-    
-    <hr/>
-    <textarea class="emscripten" id="output" rows="8"></textarea>
-    <hr>
+	<div class="emscripten" style="width: 100%; display: table;">
+		<div style="display: table-row; height: 100px;">
+			<div style="width: 50%; display: table-cell;">
+				<textarea class="emscripten" id="output" rows="8"></textarea>
+			</div>
+			<div style="display: table-cell;"> 
+				<textarea class="emscripten" id="script_input" rows="8"></textarea>
+			</div>
+		</div>
+	</div>
+	<hr/>
     <script type='text/javascript'>
       var statusElement = document.getElementById('status');
       var progressElement = document.getElementById('progress');
@@ -154,14 +165,21 @@
         file_selector.click();
       };
 
+	  recompile_script = function(e)
+		{
+			var element = document.getElementById('script_input');
+			var ptr = allocateUTF8(element.value);
+			_load_file(ptr);
+			_free(ptr);
+		};
+
       open_file = function(e) {
         const file_reader = new FileReader();
         file_reader.onload = (event) =>
         {
-			//console.log(event.target.result);
-			var ptr = allocateUTF8(event.target.result);
-			_load_file(ptr);
-			_free(ptr);
+			var element = document.getElementById('script_input');
+			element.value = event.target.result;
+			recompile_script();
         };
         file_reader.readAsText(e.target.files[0]);
       };

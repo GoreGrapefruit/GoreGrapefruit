@@ -195,7 +195,7 @@ var Module = typeof Module != 'undefined' ? Module : {};
     }
 
     }
-    loadPackage({"files": [{"filename": "/bil.png", "start": 0, "end": 300}, {"filename": "/sprite.bmp", "start": 300, "end": 1122}, {"filename": "/test.rook", "start": 1122, "end": 1813}], "remote_package_size": 1813, "package_uuid": "76d0de14-b19f-429e-a195-feff581954c8"});
+    loadPackage({"files": [{"filename": "/bil.png", "start": 0, "end": 300}, {"filename": "/sprite.bmp", "start": 300, "end": 1122}, {"filename": "/test.rook", "start": 1122, "end": 1813}], "remote_package_size": 1813, "package_uuid": "c2da7e5f-f620-4a0f-8213-649008804f00"});
 
   })();
 

@@ -57,27 +57,41 @@
       <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex=-1></canvas>
     </div>
     <hr/>
-    <div class="emscripten">
-      <!--
-      <input type="checkbox" id="resize">Resize canvas
-      <input type="checkbox" id="pointerLock" checked>Lock/hide mouse pointer
-      &nbsp;&nbsp;&nbsp;
-      <input type="button" value="Fullscreen" onclick="Module.requestFullscreen(document.getElementById('pointerLock').checked, 
-                                                                                document.getElementById('resize').checked)">
-      -->
-      <input type="button" value="Load Script" onclick="open_file_selector()">
-	  <input type="button" value="Recompile Script" onclick="recompile_script()">
-
-    </div>
-	<div class="emscripten" style="width: 100%; display: table;">
+	<div style="width: 100%; display: table;">
 		<div style="display: table-row; height: 100px;">
-			<div style="width: 50%; display: table-cell;">
-				<textarea class="emscripten" id="output" rows="8"></textarea>
+			<div style="width: 75%; display: table-cell;">
+				<textarea id="script_input" style="width: 100%; overflow:auto;resize:none" rows="16">
+local game =
+{
+	load = () ->
+	{
+		bh.log.info("Init!");
+	},
+	frame = () ->
+	{
+		bh.log.info("Frame!");
+	}
+};
+return game;
+				</textarea>
 			</div>
 			<div style="display: table-cell;"> 
-				<textarea class="emscripten" id="script_input" rows="8"></textarea>
+				<textarea readonly id="output" style="width: 100%; overflow:auto;resize:none" rows="16"></textarea>
 			</div>
 		</div>
+	</div>
+	<hr/>
+	<div>
+	  <!--
+	  <input type="checkbox" id="resize">Resize canvas
+	  <input type="checkbox" id="pointerLock" checked>Lock/hide mouse pointer
+	  &nbsp;&nbsp;&nbsp;
+	  <input type="button" value="Fullscreen" onclick="Module.requestFullscreen(document.getElementById('pointerLock').checked, 
+																				document.getElementById('resize').checked)">
+	  -->
+	  <input type="button" value="Load Script" onclick="open_file_selector()">
+	  <input type="button" value="Recompile Script" onclick="recompile_script()">
+
 	</div>
 	<hr/>
     <script type='text/javascript'>

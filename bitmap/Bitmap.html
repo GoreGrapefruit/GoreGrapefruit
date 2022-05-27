@@ -4,10 +4,14 @@
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Emscripten-Generated Code</title>
+	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
     <style>
       .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
       textarea.emscripten { font-family: monospace; width: 100%; }
-      div.emscripten { text-align: center; }
+      div.emscripten { text-align: left; }
       div.emscripten_border { border: 1px solid black;  height: 100%; }
       /* the canvas *must not* have any border or padding, or mouse coords will be wrong */
       canvas.emscripten { border: 0px none; background-color: black; }
@@ -56,7 +60,7 @@
     <div style="width: 100%; height: 100%;">
       <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex=-1></canvas>
     </div>
-    <hr/>
+	<hr/>
 	<div style="width: 100%; display: table;">
 		<div style="display: table-row; height: 100px;">
 			<div style="width: 75%; display: table-cell;">
@@ -81,18 +85,17 @@ return game;
 		</div>
 	</div>
 	<hr/>
-	<div>
-	  <!--
-	  <input type="checkbox" id="resize">Resize canvas
-	  <input type="checkbox" id="pointerLock" checked>Lock/hide mouse pointer
-	  &nbsp;&nbsp;&nbsp;
-	  <input type="button" value="Fullscreen" onclick="Module.requestFullscreen(document.getElementById('pointerLock').checked, 
-																				document.getElementById('resize').checked)">
-	  -->
-	  <input type="button" value="Load Script" onclick="open_file_selector()">
+    <div class="emscripten">
+      <!--
+      <input type="checkbox" id="resize">Resize canvas
+      <input type="checkbox" id="pointerLock" checked>Lock/hide mouse pointer
+      &nbsp;&nbsp;&nbsp;
+      <input type="button" value="Fullscreen" onclick="Module.requestFullscreen(document.getElementById('pointerLock').checked, 
+                                                                                document.getElementById('resize').checked)">
+      -->
+      <input type="button" value="Load Script" onclick="open_file_selector()">
 	  <input type="button" value="Recompile Script" onclick="recompile_script()">
-
-	</div>
+    </div>
 	<hr/>
     <script type='text/javascript'>
       var statusElement = document.getElementById('status');

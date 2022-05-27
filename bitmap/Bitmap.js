@@ -38,7 +38,7 @@ var Module = typeof Module != 'undefined' ? Module : {};
         // web worker
         PACKAGE_PATH = encodeURIComponent(location.pathname.toString().substring(0, location.pathname.toString().lastIndexOf('/')) + '/');
       }
-      var PACKAGE_NAME = 'projects/bitmap_renderer/bin/Bitmap.data';
+      var PACKAGE_NAME = 'projects/bitmap_renderer/bin/emscripten/Bitmap.data';
       var REMOTE_PACKAGE_BASE = 'Bitmap.data';
       if (typeof Module['locateFilePackage'] === 'function' && !Module['locateFile']) {
         Module['locateFile'] = Module['locateFilePackage'];
@@ -171,10 +171,10 @@ var Module = typeof Module != 'undefined' ? Module : {};
           var files = metadata['files'];
           for (var i = 0; i < files.length; ++i) {
             DataRequest.prototype.requests[files[i].filename].onload();
-          }          Module['removeRunDependency']('datafile_projects/bitmap_renderer/bin/Bitmap.data');
+          }          Module['removeRunDependency']('datafile_projects/bitmap_renderer/bin/emscripten/Bitmap.data');
 
       };
-      Module['addRunDependency']('datafile_projects/bitmap_renderer/bin/Bitmap.data');
+      Module['addRunDependency']('datafile_projects/bitmap_renderer/bin/emscripten/Bitmap.data');
 
       if (!Module.preloadResults) Module.preloadResults = {};
 
@@ -195,7 +195,7 @@ var Module = typeof Module != 'undefined' ? Module : {};
     }
 
     }
-    loadPackage({"files": [{"filename": "/bil.png", "start": 0, "end": 300}, {"filename": "/sprite.bmp", "start": 300, "end": 1122}, {"filename": "/test.rook", "start": 1122, "end": 1813}], "remote_package_size": 1813, "package_uuid": "c2da7e5f-f620-4a0f-8213-649008804f00"});
+    loadPackage({"files": [{"filename": "/bh_logo.png", "start": 0, "end": 3975}], "remote_package_size": 3975, "package_uuid": "60ccf32f-3a22-4ce6-a58f-aa1f4ae2d525"});
 
   })();
 
@@ -1891,11 +1891,11 @@ var tempI64;
 // === Body ===
 
 var ASM_CONSTS = {
-  31104: function() {window.onunload = Module._olc_OnPageUnload;},  
- 31148: function() {Module._olc_EmscriptenShellCss = "width: 100%; height: 70vh; margin-left: auto; margin-right: auto;"; Module._olc_WindowAspectRatio = 1.0; document.body.style.cssText += " overscroll-behavior-y: contain;"; if (Module.canvas.parentNode.className == 'emscripten_border') { document.body.style.margin = "0"; Module.canvas.parentNode.style.cssText = Module._olc_EmscriptenShellCss; }},  
- 31532: function() {if (Module['canvas']) { Module['canvas'].style['cursor'] = 'none'; }},  
- 31601: function() {if (Module['canvas']) { Module['canvas'].style['cursor'] = 'default'; }},  
- 31673: function($0, $1, $2, $3) {var w = $0; var h = $1; var pixels = $2; var channels = $3; if (!Module['BH']) Module['BH'] = {}; var BH = Module['BH']; if (BH.ctxCanvas !== Module['canvas']) { BH.ctx = Module['createContext'](Module['canvas'], false, true); BH.ctxCanvas = Module['canvas']; BH.ctx.imageSmoothingEnabled = false; } if (BH.w !== w || BH.h !== h) { BH.w = w; BH.h = h; BH.newCanvas = document.createElement("canvas"); BH.newCanvas.width = w; BH.newCanvas.height = h; BH.image = BH.ctx.getImageData(0, 0, w, h); } var data = BH.image.data; var src = pixels >> 2; var dst = 0; var num; if (typeof CanvasPixelArray !== 'undefined' && data instanceof CanvasPixelArray) { num = data.length; while (dst < num) { var val = HEAP32[src]; data[dst ] = val & 0xff; data[dst+1] = (val >> 8) & 0xff; data[dst+2] = (val >> 16) & 0xff; data[dst+3] = 0xff; src++; dst += 4; } } else { if (BH.data32Data !== data) { BH.data32 = new Int32Array(data.buffer); BH.data8 = new Uint8Array(data.buffer); BH.data32Data = data; } var data32 = BH.data32; num = data32.length; data32.set(HEAP32.subarray(src, src + num)); var data8 = BH.data8; var i = 3; var j = i + 4*num; if (num % 8 == 0) { while (i < j) { data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; } } else { while (i < j) { data8[i] = 0xff; i = i + 4 | 0; } } } BH.newCanvas.getContext("2d").imageSmoothingEnabled = false; BH.newCanvas.getContext("2d").putImageData(BH.image, 0, 0); BH.ctx.imageSmoothingEnabled = false; BH.ctx.drawImage(BH.newCanvas, 0, 0, w, h, 0, 0, BH.ctxCanvas.width, BH.ctxCanvas.height); return 0;}
+  35368: function() {window.onunload = Module._olc_OnPageUnload;},  
+ 35412: function() {Module._olc_EmscriptenShellCss = "width: 100%; height: 70vh; margin-left: auto; margin-right: auto;"; Module._olc_WindowAspectRatio = 1.0; document.body.style.cssText += " overscroll-behavior-y: contain;"; if (Module.canvas.parentNode.className == 'emscripten_border') { document.body.style.margin = "0"; Module.canvas.parentNode.style.cssText = Module._olc_EmscriptenShellCss; }},  
+ 35796: function() {if (Module['canvas']) { Module['canvas'].style['cursor'] = 'none'; }},  
+ 35865: function() {if (Module['canvas']) { Module['canvas'].style['cursor'] = 'default'; }},  
+ 35937: function($0, $1, $2, $3) {var w = $0; var h = $1; var pixels = $2; var channels = $3; if (!Module['BH']) Module['BH'] = {}; var BH = Module['BH']; if (BH.ctxCanvas !== Module['canvas']) { BH.ctx = Module['createContext'](Module['canvas'], false, true); BH.ctxCanvas = Module['canvas']; BH.ctx.imageSmoothingEnabled = false; } if (BH.w !== w || BH.h !== h) { BH.w = w; BH.h = h; BH.newCanvas = document.createElement("canvas"); BH.newCanvas.width = w; BH.newCanvas.height = h; BH.image = BH.ctx.getImageData(0, 0, w, h); } var data = BH.image.data; var src = pixels >> 2; var dst = 0; var num; if (typeof CanvasPixelArray !== 'undefined' && data instanceof CanvasPixelArray) { num = data.length; while (dst < num) { var val = HEAP32[src]; data[dst ] = val & 0xff; data[dst+1] = (val >> 8) & 0xff; data[dst+2] = (val >> 16) & 0xff; data[dst+3] = 0xff; src++; dst += 4; } } else { if (BH.data32Data !== data) { BH.data32 = new Int32Array(data.buffer); BH.data8 = new Uint8Array(data.buffer); BH.data32Data = data; } var data32 = BH.data32; num = data32.length; data32.set(HEAP32.subarray(src, src + num)); var data8 = BH.data8; var i = 3; var j = i + 4*num; if (num % 8 == 0) { while (i < j) { data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; } } else { while (i < j) { data8[i] = 0xff; i = i + 4 | 0; } } } BH.newCanvas.getContext("2d").imageSmoothingEnabled = false; BH.newCanvas.getContext("2d").putImageData(BH.image, 0, 0); BH.ctx.imageSmoothingEnabled = false; BH.ctx.drawImage(BH.newCanvas, 0, 0, w, h, 0, 0, BH.ctxCanvas.width, BH.ctxCanvas.height); return 0;}
 };
 
 

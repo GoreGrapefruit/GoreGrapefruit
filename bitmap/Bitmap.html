@@ -76,8 +76,7 @@ local game =
 		bh.log.info("Frame!");
 	}
 };
-return game;
-				</textarea>
+return game;</textarea>
 			</div>
 			<div style="display: table-cell;"> 
 				<textarea readonly id="output" style="width: 100%; overflow:auto;resize:none" rows="16"></textarea>
@@ -85,16 +84,15 @@ return game;
 		</div>
 	</div>
 	<hr/>
-    <div class="emscripten">
-      <!--
-      <input type="checkbox" id="resize">Resize canvas
-      <input type="checkbox" id="pointerLock" checked>Lock/hide mouse pointer
-      &nbsp;&nbsp;&nbsp;
-      <input type="button" value="Fullscreen" onclick="Module.requestFullscreen(document.getElementById('pointerLock').checked, 
-                                                                                document.getElementById('resize').checked)">
-      -->
-      <input type="button" value="Load Script" onclick="open_file_selector()">
-	  <input type="button" value="Recompile Script" onclick="recompile_script()">
+	<div class="emscripten">
+		<!--
+		<input type="checkbox" id="resize">Resize canvas</input>
+		<input type="checkbox" id="pointerLock" checked>Lock/hide mouse pointer</input>
+		<input type="button" value="Fullscreen" onclick="Module.requestFullscreen(document.getElementById('pointerLock').checked, document.getElementById('resize').checked)">
+		-->
+		<input type="button" value="Load Script" onclick="open_file_selector()">
+		<input type="button" value="Recompile Script" onclick="recompile_script()">
+		<input type="checkbox" id="clear_log_recompile">Clear log on recompile</input>
     </div>
 	<hr/>
     <script type='text/javascript'>
@@ -184,6 +182,9 @@ return game;
 
 	  recompile_script = function(e)
 		{
+			if(document.getElementById('clear_log_recompile').checked)
+				document.getElementById('output').value = "";
+			
 			var element = document.getElementById('script_input');
 			var ptr = allocateUTF8(element.value);
 			_load_file(ptr);

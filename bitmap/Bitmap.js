@@ -195,7 +195,7 @@ var Module = typeof Module != 'undefined' ? Module : {};
     }
 
     }
-    loadPackage({"files": [{"filename": "/AmplitudMonoGX.ttf", "start": 0, "end": 29116}, {"filename": "/bh_logo.png", "start": 29116, "end": 33091}, {"filename": "/NotoSans-Bold.ttf", "start": 33091, "end": 448223}, {"filename": "/Operand-Bold.ttf", "start": 448223, "end": 614839}, {"filename": "/Operand-BoldItalic.ttf", "start": 614839, "end": 787123}, {"filename": "/Operand-Light.ttf", "start": 787123, "end": 946019}, {"filename": "/Operand-LightItalic.ttf", "start": 946019, "end": 1110787}, {"filename": "/Operand-Medium.ttf", "start": 1110787, "end": 1278663}, {"filename": "/Operand-MediumItalic.ttf", "start": 1278663, "end": 1451151}, {"filename": "/Operand-Regular.ttf", "start": 1451151, "end": 1609867}, {"filename": "/Operand-RegularItalic.ttf", "start": 1609867, "end": 1774107}, {"filename": "/Operand-Thin.ttf", "start": 1774107, "end": 1930651}, {"filename": "/Operand-ThinItalic.ttf", "start": 1930651, "end": 2092871}, {"filename": "/Rakel-Regular.ttf", "start": 2092871, "end": 2192779}], "remote_package_size": 2192779, "package_uuid": "bb087a28-5491-42f7-aec7-a689301c21a4"});
+    loadPackage({"files": [{"filename": "/AmplitudMonoGX.ttf", "start": 0, "end": 29116}, {"filename": "/bh_logo.png", "start": 29116, "end": 33091}, {"filename": "/NotoSans-Bold.ttf", "start": 33091, "end": 448223}, {"filename": "/Operand-Bold.ttf", "start": 448223, "end": 614839}, {"filename": "/Operand-BoldItalic.ttf", "start": 614839, "end": 787123}, {"filename": "/Operand-Light.ttf", "start": 787123, "end": 946019}, {"filename": "/Operand-LightItalic.ttf", "start": 946019, "end": 1110787}, {"filename": "/Operand-Medium.ttf", "start": 1110787, "end": 1278663}, {"filename": "/Operand-MediumItalic.ttf", "start": 1278663, "end": 1451151}, {"filename": "/Operand-Regular.ttf", "start": 1451151, "end": 1609867}, {"filename": "/Operand-RegularItalic.ttf", "start": 1609867, "end": 1774107}, {"filename": "/Operand-Thin.ttf", "start": 1774107, "end": 1930651}, {"filename": "/Operand-ThinItalic.ttf", "start": 1930651, "end": 2092871}, {"filename": "/Rakel-Regular.ttf", "start": 2092871, "end": 2192779}], "remote_package_size": 2192779, "package_uuid": "efaf0410-6c2d-40c8-93be-d0e0cc5e4dd4"});
 
   })();
 
@@ -577,13 +577,15 @@ function convertJsFunctionToWasm(func, sig) {
       'i': 'i32',
       'j': 'i64',
       'f': 'f32',
-      'd': 'f64'
+      'd': 'f64',
+      'p': 'i32',
     };
     var type = {
       parameters: [],
       results: sig[0] == 'v' ? [] : [typeNames[sig[0]]]
     };
     for (var i = 1; i < sig.length; ++i) {
+      assert(sig[i] in typeNames, 'invalid signature char: ' + sig[i]);
       type.parameters.push(typeNames[sig[i]]);
     }
     return new WebAssembly.Function(type, func);
@@ -599,6 +601,7 @@ function convertJsFunctionToWasm(func, sig) {
   var sigParam = sig.slice(1);
   var typeCodes = {
     'i': 0x7f, // i32
+    'p': 0x7f, // i32
     'j': 0x7e, // i64
     'f': 0x7d, // f32
     'd': 0x7c, // f64
@@ -607,6 +610,7 @@ function convertJsFunctionToWasm(func, sig) {
   // Parameters, length + signatures
   typeSection = typeSection.concat(uleb128Encode(sigParam.length));
   for (var i = 0; i < sigParam.length; ++i) {
+    assert(sigParam[i] in typeCodes, 'invalid signature char: ' + sigParam[i]);
     typeSection.push(typeCodes[sigParam[i]]);
   }
 
@@ -805,50 +809,6 @@ if (typeof WebAssembly != 'object') {
   abort('no native wasm support detected');
 }
 
-// include: runtime_safe_heap.js
-
-
-// In MINIMAL_RUNTIME, setValue() and getValue() are only available when
-// building with safe heap enabled, for heap safety checking.
-// In traditional runtime, setValue() and getValue() are always available
-// (although their use is highly discouraged due to perf penalties)
-
-/** @param {number} ptr
-    @param {number} value
-    @param {string} type
-    @param {number|boolean=} noSafe */
-function setValue(ptr, value, type = 'i8', noSafe) {
-  if (type.endsWith('*')) type = 'i32';
-  switch (type) {
-    case 'i1': HEAP8[((ptr)>>0)] = value; break;
-    case 'i8': HEAP8[((ptr)>>0)] = value; break;
-    case 'i16': HEAP16[((ptr)>>1)] = value; break;
-    case 'i32': HEAP32[((ptr)>>2)] = value; break;
-    case 'i64': (tempI64 = [value>>>0,(tempDouble=value,(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? ((Math.min((+(Math.floor((tempDouble)/4294967296.0))), 4294967295.0))|0)>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)],HEAP32[((ptr)>>2)] = tempI64[0],HEAP32[(((ptr)+(4))>>2)] = tempI64[1]); break;
-    case 'float': HEAPF32[((ptr)>>2)] = value; break;
-    case 'double': HEAPF64[((ptr)>>3)] = value; break;
-    default: abort('invalid type for setValue: ' + type);
-  }
-}
-
-/** @param {number} ptr
-    @param {string} type
-    @param {number|boolean=} noSafe */
-function getValue(ptr, type = 'i8', noSafe) {
-  if (type.endsWith('*')) type = 'i32';
-  switch (type) {
-    case 'i1': return HEAP8[((ptr)>>0)];
-    case 'i8': return HEAP8[((ptr)>>0)];
-    case 'i16': return HEAP16[((ptr)>>1)];
-    case 'i32': return HEAP32[((ptr)>>2)];
-    case 'i64': return HEAP32[((ptr)>>2)];
-    case 'float': return HEAPF32[((ptr)>>2)];
-    case 'double': return Number(HEAPF64[((ptr)>>3)]);
-    default: abort('invalid type for getValue: ' + type);
-  }
-}
-
-// end include: runtime_safe_heap.js
 // Wasm globals
 
 var wasmMemory;
@@ -906,7 +866,10 @@ function ccall(ident, returnType, argTypes, args, opts) {
   };
 
   function convertReturnValue(ret) {
-    if (returnType === 'string') return UTF8ToString(ret);
+    if (returnType === 'string') {
+      
+      return UTF8ToString(ret);
+    }
     if (returnType === 'boolean') return Boolean(ret);
     return ret;
   }
@@ -1054,7 +1017,6 @@ function UTF8ArrayToString(heapOrArray, idx, maxBytesToRead) {
  * @return {string}
  */
 function UTF8ToString(ptr, maxBytesToRead) {
-  ;
   return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead) : '';
 }
 
@@ -1659,12 +1621,16 @@ function abort(what) {
   // Use a wasm runtime error, because a JS error might be seen as a foreign
   // exception, which means we'd run destructors on it. We need the error to
   // simply make the program stop.
+  // FIXME This approach does not work in Wasm EH because it currently does not assume
+  // all RuntimeErrors are from traps; it decides whether a RuntimeError is from
+  // a trap or not based on a hidden field within the object. So at the moment
+  // we don't have a way of throwing a wasm trap from JS. TODO Make a JS API that
+  // allows this in the wasm spec.
 
   // Suppress closure compiler warning here. Closure compiler's builtin extern
   // defintion for WebAssembly.RuntimeError claims it takes no arguments even
   // though it can.
   // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure gets fixed.
-
   /** @suppress {checkTypes} */
   var e = new WebAssembly.RuntimeError(what);
 
@@ -1891,11 +1857,11 @@ var tempI64;
 // === Body ===
 
 var ASM_CONSTS = {
-  355544: function() {window.onunload = Module._olc_OnPageUnload;},  
- 355588: function() {Module._olc_EmscriptenShellCss = "width: 100%; height: 70vh; margin-left: auto; margin-right: auto;"; Module._olc_WindowAspectRatio = 1.0; document.body.style.cssText += " overscroll-behavior-y: contain;"; if (Module.canvas.parentNode.className == 'emscripten_border') { document.body.style.margin = "0"; Module.canvas.parentNode.style.cssText = Module._olc_EmscriptenShellCss; }},  
- 355972: function() {if (Module['canvas']) { Module['canvas'].style['cursor'] = 'none'; }},  
- 356041: function() {if (Module['canvas']) { Module['canvas'].style['cursor'] = 'default'; }},  
- 356113: function($0, $1, $2, $3) {var w = $0; var h = $1; var pixels = $2; var channels = $3; if (!Module['BH']) Module['BH'] = {}; var BH = Module['BH']; if (BH.ctxCanvas !== Module['canvas']) { BH.ctx = Module['createContext'](Module['canvas'], false, true); BH.ctxCanvas = Module['canvas']; BH.ctx.imageSmoothingEnabled = false; } if (BH.w !== w || BH.h !== h) { BH.w = w; BH.h = h; BH.newCanvas = document.createElement("canvas"); BH.newCanvas.width = w; BH.newCanvas.height = h; BH.image = BH.ctx.getImageData(0, 0, w, h); } var data = BH.image.data; var src = pixels >> 2; var dst = 0; var num; if (typeof CanvasPixelArray !== 'undefined' && data instanceof CanvasPixelArray) { num = data.length; while (dst < num) { var val = HEAP32[src]; data[dst ] = val & 0xff; data[dst+1] = (val >> 8) & 0xff; data[dst+2] = (val >> 16) & 0xff; data[dst+3] = 0xff; src++; dst += 4; } } else { if (BH.data32Data !== data) { BH.data32 = new Int32Array(data.buffer); BH.data8 = new Uint8Array(data.buffer); BH.data32Data = data; } var data32 = BH.data32; num = data32.length; data32.set(HEAP32.subarray(src, src + num)); var data8 = BH.data8; var i = 3; var j = i + 4*num; if (num % 8 == 0) { while (i < j) { data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; } } else { while (i < j) { data8[i] = 0xff; i = i + 4 | 0; } } } BH.newCanvas.getContext("2d").imageSmoothingEnabled = false; BH.newCanvas.getContext("2d").putImageData(BH.image, 0, 0); BH.ctx.imageSmoothingEnabled = false; BH.ctx.drawImage(BH.newCanvas, 0, 0, w, h, 0, 0, BH.ctxCanvas.width, BH.ctxCanvas.height); return 0;}
+  355592: () => { window.onunload = Module._olc_OnPageUnload; },  
+ 355636: () => { Module._olc_EmscriptenShellCss = "width: 100%; height: 70vh; margin-left: auto; margin-right: auto;"; Module._olc_WindowAspectRatio = 1.0; document.body.style.cssText += " overscroll-behavior-y: contain;"; if (Module.canvas.parentNode.className == 'emscripten_border') { document.body.style.margin = "0"; Module.canvas.parentNode.style.cssText = Module._olc_EmscriptenShellCss; } },  
+ 356020: () => { if (Module['canvas']) { Module['canvas'].style['cursor'] = 'none'; } },  
+ 356089: () => { if (Module['canvas']) { Module['canvas'].style['cursor'] = 'default'; } },  
+ 356161: ($0, $1, $2, $3) => { var w = $0; var h = $1; var pixels = $2; var channels = $3; if (!Module['BH']) Module['BH'] = {}; var BH = Module['BH']; if (BH.ctxCanvas !== Module['canvas']) { BH.ctx = Module['createContext'](Module['canvas'], false, true); BH.ctxCanvas = Module['canvas']; BH.ctx.imageSmoothingEnabled = false; } if (BH.w !== w || BH.h !== h) { BH.w = w; BH.h = h; BH.newCanvas = document.createElement("canvas"); BH.newCanvas.width = w; BH.newCanvas.height = h; BH.image = BH.ctx.getImageData(0, 0, w, h); } var data = BH.image.data; var src = pixels >> 2; var dst = 0; var num; if (typeof CanvasPixelArray !== 'undefined' && data instanceof CanvasPixelArray) { num = data.length; while (dst < num) { var val = HEAP32[src]; data[dst ] = val & 0xff; data[dst+1] = (val >> 8) & 0xff; data[dst+2] = (val >> 16) & 0xff; data[dst+3] = 0xff; src++; dst += 4; } } else { if (BH.data32Data !== data) { BH.data32 = new Int32Array(data.buffer); BH.data8 = new Uint8Array(data.buffer); BH.data32Data = data; } var data32 = BH.data32; num = data32.length; data32.set(HEAP32.subarray(src, src + num)); var data8 = BH.data8; var i = 3; var j = i + 4*num; if (num % 8 == 0) { while (i < j) { data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; data8[i] = 0xff; i = i + 4 | 0; } } else { while (i < j) { data8[i] = 0xff; i = i + 4 | 0; } } } BH.newCanvas.getContext("2d").imageSmoothingEnabled = false; BH.newCanvas.getContext("2d").putImageData(BH.image, 0, 0); BH.ctx.imageSmoothingEnabled = false; BH.ctx.drawImage(BH.newCanvas, 0, 0, w, h, 0, 0, BH.ctxCanvas.width, BH.ctxCanvas.height); return 0; }
 };
 
 
@@ -1949,6 +1915,26 @@ var ASM_CONSTS = {
         });
     }
 
+  
+    /**
+     * @param {number} ptr
+     * @param {string} type
+     */
+  function getValue(ptr, type = 'i8') {
+      if (type.endsWith('*')) type = 'i32';
+      switch (type) {
+        case 'i1': return HEAP8[((ptr)>>0)];
+        case 'i8': return HEAP8[((ptr)>>0)];
+        case 'i16': return HEAP16[((ptr)>>1)];
+        case 'i32': return HEAP32[((ptr)>>2)];
+        case 'i64': return HEAP32[((ptr)>>2)];
+        case 'float': return HEAPF32[((ptr)>>2)];
+        case 'double': return Number(HEAPF64[((ptr)>>3)]);
+        default: abort('invalid type for getValue: ' + type);
+      }
+      return null;
+    }
+
   var wasmTableMirror = [];
   function getWasmTableEntry(funcPtr) {
       var func = wasmTableMirror[funcPtr];
@@ -1987,6 +1973,26 @@ var ASM_CONSTS = {
         }
       }
       return error.stack.toString();
+    }
+
+  
+    /**
+     * @param {number} ptr
+     * @param {number} value
+     * @param {string} type
+     */
+  function setValue(ptr, value, type = 'i8') {
+      if (type.endsWith('*')) type = 'i32';
+      switch (type) {
+        case 'i1': HEAP8[((ptr)>>0)] = value; break;
+        case 'i8': HEAP8[((ptr)>>0)] = value; break;
+        case 'i16': HEAP16[((ptr)>>1)] = value; break;
+        case 'i32': HEAP32[((ptr)>>2)] = value; break;
+        case 'i64': (tempI64 = [value>>>0,(tempDouble=value,(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? ((Math.min((+(Math.floor((tempDouble)/4294967296.0))), 4294967295.0))|0)>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)],HEAP32[((ptr)>>2)] = tempI64[0],HEAP32[(((ptr)+(4))>>2)] = tempI64[1]); break;
+        case 'float': HEAPF32[((ptr)>>2)] = value; break;
+        case 'double': HEAPF64[((ptr)>>3)] = value; break;
+        default: abort('invalid type for setValue: ' + type);
+      }
     }
 
   function setWasmTableEntry(idx, func) {
@@ -2580,11 +2586,7 @@ var ASM_CONSTS = {
         },allocate:function(stream, offset, length) {
           MEMFS.expandFileStorage(stream.node, offset + length);
           stream.node.usedBytes = Math.max(stream.node.usedBytes, offset + length);
-        },mmap:function(stream, address, length, position, prot, flags) {
-          if (address !== 0) {
-            // We don't currently support location hints for the address of the mapping
-            throw new FS.ErrnoError(28);
-          }
+        },mmap:function(stream, length, position, prot, flags) {
           if (!FS.isFile(stream.node.mode)) {
             throw new FS.ErrnoError(43);
           }
@@ -3545,7 +3547,7 @@ var ASM_CONSTS = {
           throw new FS.ErrnoError(138);
         }
         stream.stream_ops.allocate(stream, offset, length);
-      },mmap:(stream, address, length, position, prot, flags) => {
+      },mmap:(stream, length, position, prot, flags) => {
         // User requests writing to file (prot & PROT_WRITE != 0).
         // Checking if we have permissions to write to the file unless
         // MAP_PRIVATE flag is set. According to POSIX spec it is possible
@@ -3563,7 +3565,7 @@ var ASM_CONSTS = {
         if (!stream.stream_ops.mmap) {
           throw new FS.ErrnoError(43);
         }
-        return stream.stream_ops.mmap(stream, address, length, position, prot, flags);
+        return stream.stream_ops.mmap(stream, length, position, prot, flags);
       },msync:(stream, buffer, offset, length, mmapFlags) => {
         if (!stream || !stream.stream_ops.msync) {
           return 0;
@@ -3764,9 +3766,8 @@ var ASM_CONSTS = {
         FS.createStandardStreams();
       },quit:() => {
         FS.init.initialized = false;
-        // Call musl-internal function to close all stdio streams, so nothing is
-        // left in internal buffers.
-        ___stdio_exit();
+        // force-flush all streams, so we get musl std streams printed out
+        _fflush(0);
         // close all of our streams
         for (var i = 0; i < FS.streams.length; i++) {
           var stream = FS.streams[i];
@@ -4304,7 +4305,7 @@ var ASM_CONSTS = {
         case 8:
           return -28; // These are for sockets. We don't have them fully implemented yet.
         case 9:
-          // musl trusts getown return values, due to a bug where they must be, as they overlap with errors. just return -1 here, so fnctl() returns that, and we set errno ourselves.
+          // musl trusts getown return values, due to a bug where they must be, as they overlap with errors. just return -1 here, so fcntl() returns that, and we set errno ourselves.
           setErrNo(28);
           return -1;
         default: {
@@ -4443,11 +4444,11 @@ var ASM_CONSTS = {
       var summerNamePtr = allocateUTF8(summerName);
       if (summerOffset < winterOffset) {
         // Northern hemisphere
-        HEAP32[((tzname)>>2)] = winterNamePtr;
-        HEAP32[(((tzname)+(4))>>2)] = summerNamePtr;
+        HEAPU32[((tzname)>>2)] = winterNamePtr;
+        HEAPU32[(((tzname)+(4))>>2)] = summerNamePtr;
       } else {
-        HEAP32[((tzname)>>2)] = summerNamePtr;
-        HEAP32[(((tzname)+(4))>>2)] = winterNamePtr;
+        HEAPU32[((tzname)>>2)] = summerNamePtr;
+        HEAPU32[(((tzname)+(4))>>2)] = winterNamePtr;
       }
     }
   function __tzset_js(timezone, daylight, tzname) {
@@ -4463,7 +4464,6 @@ var ASM_CONSTS = {
 
   var readAsmConstArgsArray = [];
   function readAsmConstArgs(sigPtr, buf) {
-      ;
       // Nobody should have mutated _readAsmConstArgsArray underneath us to be something else than an array.
       assert(Array.isArray(readAsmConstArgsArray));
       // The input buffer is allocated on the stack, so it must be stack-aligned.
@@ -4474,11 +4474,12 @@ var ASM_CONSTS = {
       // index into HEAP32.
       buf >>= 2;
       while (ch = HEAPU8[sigPtr++]) {
-        assert(ch === 100/*'d'*/ || ch === 102/*'f'*/ || ch === 105 /*'i'*/ || ch === 106 /*'j'*/, 'Invalid character ' + ch + '("' + String.fromCharCode(ch) + '") in readAsmConstArgs! Use only "d", "f" or "i", and do not specify "v" for void return argument.');
-        assert(ch !== 106/*'j'*/, "i64 arguments to ASM_JS function are not available without WASM_BIGINT");
+        var chr = String.fromCharCode(ch);
+        var validChars = ['d', 'f', 'i'];
+        assert(validChars.includes(chr), 'Invalid character ' + ch + '("' + chr + '") in readAsmConstArgs! Use only [' + validChars + '], and do not specify "v" for void return argument.');
         // Floats are always passed as doubles, and doubles and int64s take up 8
         // bytes (two 32-bit slots) in memory, align reads to these:
-        buf += (ch != 105) & buf;
+        buf += (ch != 105/*i*/) & buf;
         readAsmConstArgsArray.push(
           ch == 105/*i*/ ? HEAP32[buf] :
          HEAPF64[buf++ >> 1]
@@ -5543,7 +5544,7 @@ var ASM_CONSTS = {
   function getBoundingClientRect(e) {
       return specialHTMLTargets.indexOf(e) < 0 ? e.getBoundingClientRect() : {'left':0,'top':0};
     }
-  function _JSEvents_resizeCanvasForFullscreen(target, strategy) {
+  function JSEvents_resizeCanvasForFullscreen(target, strategy) {
       var restoreOldStyle = registerRestoreOldStyle(target);
       var cssWidth = strategy.softFullscreen ? innerWidth : screen.width;
       var cssHeight = strategy.softFullscreen ? innerHeight : screen.height;
@@ -5599,10 +5600,10 @@ var ASM_CONSTS = {
       }
       return restoreOldStyle;
     }
-  function _JSEvents_requestFullscreen(target, strategy) {
+  function JSEvents_requestFullscreen(target, strategy) {
       // EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT + EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE is a mode where no extra logic is performed to the DOM elements.
       if (strategy.scaleMode != 0 || strategy.canvasResolutionScaleMode != 0) {
-        _JSEvents_resizeCanvasForFullscreen(target, strategy);
+        JSEvents_resizeCanvasForFullscreen(target, strategy);
       }
   
       if (target.requestFullscreen) {
@@ -5624,7 +5625,7 @@ var ASM_CONSTS = {
   function _emscripten_exit_fullscreen() {
       if (!JSEvents.fullscreenEnabled()) return -1;
       // Make sure no queued up calls will fire after this.
-      JSEvents.removeDeferredCalls(_JSEvents_requestFullscreen);
+      JSEvents.removeDeferredCalls(JSEvents_requestFullscreen);
   
       var d = specialHTMLTargets[1];
       if (d.exitFullscreen) {
@@ -5699,14 +5700,14 @@ var ASM_CONSTS = {
       // Queue this function call if we're not currently in an event handler and the user saw it appropriate to do so.
       if (!canPerformRequests) {
         if (strategy.deferUntilInEventHandler) {
-          JSEvents.deferCall(_JSEvents_requestFullscreen, 1 /* priority over pointer lock */, [target, strategy]);
+          JSEvents.deferCall(JSEvents_requestFullscreen, 1 /* priority over pointer lock */, [target, strategy]);
           return 1;
         } else {
           return -2;
         }
       }
   
-      return _JSEvents_requestFullscreen(target, strategy);
+      return JSEvents_requestFullscreen(target, strategy);
     }
   function _emscripten_request_fullscreen(target, deferUntilInEventHandler) {
       var strategy = {
@@ -5720,7 +5721,7 @@ var ASM_CONSTS = {
       return doRequestFullscreen(target, strategy);
     }
 
-  function _emscripten_get_heap_max() {
+  function getHeapMax() {
       // Stay one Wasm page short of 4GB: while e.g. Chrome is able to allocate
       // full 4GB Wasm memories, the size will wrap back to 0 bytes in Wasm side
       // for any code that deals with heap sizes, which would require special
@@ -5766,7 +5767,7 @@ var ASM_CONSTS = {
   
       // A limit is set for how much we can grow. We should not exceed that
       // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
-      var maxHeapSize = _emscripten_get_heap_max();
+      var maxHeapSize = getHeapMax();
       if (requestedSize > maxHeapSize) {
         err('Cannot enlarge memory, asked to go up to ' + requestedSize + ' bytes, but the limit is ' + maxHeapSize + ' bytes!');
         return false;
@@ -6118,21 +6119,16 @@ var ASM_CONSTS = {
   }
   }
 
+  function convertI32PairToI53Checked(lo, hi) {
+      assert(lo == (lo >>> 0) || lo == (lo|0)); // lo should either be a i32 or a u32
+      assert(hi === (hi|0));                    // hi should be a i32
+      return ((hi + 0x200000) >>> 0 < 0x400001 - !!lo) ? (lo >>> 0) + hi * 4294967296 : NaN;
+    }
   function _fd_seek(fd, offset_low, offset_high, whence, newOffset) {
   try {
   
-      
+      var offset = convertI32PairToI53Checked(offset_low, offset_high); if (isNaN(offset)) return 61;
       var stream = SYSCALLS.getStreamFromFD(fd);
-      var HIGH_OFFSET = 0x100000000; // 2^32
-      // use an unsigned operator on low and shift high by 32-bits
-      var offset = offset_high * HIGH_OFFSET + (offset_low >>> 0);
-  
-      var DOUBLE_LIMIT = 0x20000000000000; // 2^53
-      // we also check for equality since DOUBLE_LIMIT + 1 == DOUBLE_LIMIT
-      if (offset <= -DOUBLE_LIMIT || offset >= DOUBLE_LIMIT) {
-        return 61;
-      }
-  
       FS.llseek(stream, offset, whence);
       (tempI64 = [stream.position>>>0,(tempDouble=stream.position,(+(Math.abs(tempDouble))) >= 1.0 ? (tempDouble > 0.0 ? ((Math.min((+(Math.floor((tempDouble)/4294967296.0))), 4294967295.0))|0)>>>0 : (~~((+(Math.ceil((tempDouble - +(((~~(tempDouble)))>>>0))/4294967296.0)))))>>>0) : 0)],HEAP32[((newOffset)>>2)] = tempI64[0],HEAP32[(((newOffset)+(4))>>2)] = tempI64[1]);
       if (stream.getdents && offset === 0 && whence === 0) stream.getdents = null; // reset readdir state
@@ -6159,10 +6155,9 @@ var ASM_CONSTS = {
   function _fd_write(fd, iov, iovcnt, pnum) {
   try {
   
-      ;
       var stream = SYSCALLS.getStreamFromFD(fd);
       var num = doWritev(stream, iov, iovcnt);
-      HEAP32[((pnum)>>2)] = num;
+      HEAPU32[((pnum)>>2)] = num;
       return 0;
     } catch (e) {
     if (typeof FS == 'undefined' || !(e instanceof FS.ErrnoError)) throw e;
@@ -6883,6 +6878,9 @@ var _malloc = Module["_malloc"] = createExportWrapper("malloc");
 var _free = Module["_free"] = createExportWrapper("free");
 
 /** @type {function(...*):?} */
+var _fflush = Module["_fflush"] = createExportWrapper("fflush");
+
+/** @type {function(...*):?} */
 var _bh_em_update_window_size = Module["_bh_em_update_window_size"] = createExportWrapper("bh_em_update_window_size");
 
 /** @type {function(...*):?} */
@@ -6899,9 +6897,6 @@ var _main = Module["_main"] = createExportWrapper("main");
 
 /** @type {function(...*):?} */
 var ___errno_location = Module["___errno_location"] = createExportWrapper("__errno_location");
-
-/** @type {function(...*):?} */
-var ___stdio_exit = Module["___stdio_exit"] = createExportWrapper("__stdio_exit");
 
 /** @type {function(...*):?} */
 var _setThrew = Module["_setThrew"] = createExportWrapper("setThrew");
@@ -6952,8 +6947,6 @@ var dynCall_jiji = Module["dynCall_jiji"] = createExportWrapper("dynCall_jiji");
 
 Module["ccall"] = ccall;
 unexportedRuntimeFunction('cwrap', false);
-unexportedRuntimeFunction('setValue', false);
-unexportedRuntimeFunction('getValue', false);
 unexportedRuntimeFunction('allocate', false);
 unexportedRuntimeFunction('UTF8ArrayToString', false);
 unexportedRuntimeFunction('UTF8ToString', false);
@@ -7016,6 +7009,7 @@ Module["checkStackCookie"] = checkStackCookie;
 unexportedRuntimeFunction('ptrToString', false);
 unexportedRuntimeFunction('zeroMemory', false);
 unexportedRuntimeFunction('stringToNewUTF8', false);
+unexportedRuntimeFunction('getHeapMax', false);
 unexportedRuntimeFunction('emscripten_realloc_buffer', false);
 unexportedRuntimeFunction('ENV', false);
 unexportedRuntimeFunction('ERRNO_CODES', false);
@@ -7056,10 +7050,23 @@ unexportedRuntimeFunction('asmjsMangle', false);
 unexportedRuntimeFunction('asyncLoad', false);
 unexportedRuntimeFunction('alignMemory', false);
 unexportedRuntimeFunction('mmapAlloc', false);
+unexportedRuntimeFunction('writeI53ToI64', false);
+unexportedRuntimeFunction('writeI53ToI64Clamped', false);
+unexportedRuntimeFunction('writeI53ToI64Signaling', false);
+unexportedRuntimeFunction('writeI53ToU64Clamped', false);
+unexportedRuntimeFunction('writeI53ToU64Signaling', false);
+unexportedRuntimeFunction('readI53FromI64', false);
+unexportedRuntimeFunction('readI53FromU64', false);
+unexportedRuntimeFunction('convertI32PairToI53', false);
+unexportedRuntimeFunction('convertI32PairToI53Checked', false);
+unexportedRuntimeFunction('convertU32PairToI53', false);
 unexportedRuntimeFunction('reallyNegative', false);
 unexportedRuntimeFunction('unSign', false);
+unexportedRuntimeFunction('strLen', false);
 unexportedRuntimeFunction('reSign', false);
 unexportedRuntimeFunction('formatString', false);
+unexportedRuntimeFunction('setValue', false);
+unexportedRuntimeFunction('getValue', false);
 unexportedRuntimeFunction('PATH', false);
 unexportedRuntimeFunction('PATH_FS', false);
 unexportedRuntimeFunction('SYSCALLS', false);
@@ -7086,6 +7093,8 @@ unexportedRuntimeFunction('fillOrientationChangeEventData', false);
 unexportedRuntimeFunction('registerOrientationChangeEventCallback', false);
 unexportedRuntimeFunction('fillFullscreenChangeEventData', false);
 unexportedRuntimeFunction('registerFullscreenChangeEventCallback', false);
+unexportedRuntimeFunction('JSEvents_requestFullscreen', false);
+unexportedRuntimeFunction('JSEvents_resizeCanvasForFullscreen', false);
 unexportedRuntimeFunction('registerRestoreOldStyle', false);
 unexportedRuntimeFunction('hideEverythingExceptGivenElement', false);
 unexportedRuntimeFunction('restoreHiddenElements', false);
@@ -7117,15 +7126,6 @@ unexportedRuntimeFunction('getEnvStrings', false);
 unexportedRuntimeFunction('checkWasiClock', false);
 unexportedRuntimeFunction('doReadv', false);
 unexportedRuntimeFunction('doWritev', false);
-unexportedRuntimeFunction('writeI53ToI64', false);
-unexportedRuntimeFunction('writeI53ToI64Clamped', false);
-unexportedRuntimeFunction('writeI53ToI64Signaling', false);
-unexportedRuntimeFunction('writeI53ToU64Clamped', false);
-unexportedRuntimeFunction('writeI53ToU64Signaling', false);
-unexportedRuntimeFunction('readI53FromI64', false);
-unexportedRuntimeFunction('readI53FromU64', false);
-unexportedRuntimeFunction('convertI32PairToI53', false);
-unexportedRuntimeFunction('convertU32PairToI53', false);
 unexportedRuntimeFunction('dlopenMissingError', false);
 unexportedRuntimeFunction('setImmediateWrapped', false);
 unexportedRuntimeFunction('clearImmediateWrapped', false);
@@ -7202,14 +7202,15 @@ function callMain(args) {
   var entryFunction = Module['_main'];
 
   args = args || [];
+  args.unshift(thisProgram);
 
-  var argc = args.length+1;
+  var argc = args.length;
   var argv = stackAlloc((argc + 1) * 4);
-  HEAP32[argv >> 2] = allocateUTF8OnStack(thisProgram);
-  for (var i = 1; i < argc; i++) {
-    HEAP32[(argv >> 2) + i] = allocateUTF8OnStack(args[i - 1]);
-  }
-  HEAP32[(argv >> 2) + argc] = 0;
+  var argv_ptr = argv >> 2;
+  args.forEach((arg) => {
+    HEAP32[argv_ptr++] = allocateUTF8OnStack(arg);
+  });
+  HEAP32[argv_ptr] = 0;
 
   try {
 
@@ -7310,7 +7311,7 @@ function checkUnflushedContent() {
     has = true;
   }
   try { // it doesn't matter if it fails
-    ___stdio_exit();
+    _fflush(0);
     // also flush in the JS FS layer
     ['stdout', 'stderr'].forEach(function(name) {
       var info = FS.analyzePath('/dev/' + name);

@@ -39,22 +39,22 @@
 	"dostring": "dostring",
 	"bh": {
 		"log": {
-			"error": "error : (unknown : any)",
-			"info": "info : (unknown : any)",
-			"warning": "warning : (unknown : any)"
+			"error": "error : (msg : string)",
+			"info": "info : (msg : string)",
+			"warning": "warning : (msg : string)"
 		},
 		"time": {
-			"getElapsed": "getElapsed",
-			"getDelta": "getDelta"
+			"getElapsed": "getElapsed (void)",
+			"getDelta": "getDelta (void)"
 		},
 		"path": {
-			"ext": "ext : (unknown : any)",
-			"dir": "dir : (unknown : any)",
-			"is_relative": "is_relative : (unknown : any)",
-			"name": "name : (unknown : any)",
-			"normalize": "normalize : (unknown : any)",
+			"ext": "ext : (path : string)",
+			"dir": "dir : (path : string)",
+			"is_relative": "is_relative : (path : string)",
+			"name": "name : (path : string)",
+			"normalize": "normalize : (path : string)",
 			"relative": "relative : (unknown : any, unknown : any)",
-			"is_absolute": "is_absolute : (unknown : any)"
+			"is_absolute": "is_absolute : (path : string)"
 		},
 		"os": {
 			"platform": {
@@ -62,21 +62,21 @@
 				"windows": 0,
 				"macos": 1
 			},
-			"get_platform": "get_platform",
-			"set_working_directory": "set_working_directory : (unknown : any)",
-			"get_working_directory": "get_working_directory",
+			"get_platform": "get_platform (void)",
+			"set_working_directory": "set_working_directory : (path : string)",
+			"get_working_directory": "get_working_directory (void)",
 			"filesystem": {
-				"delete_file": "delete_file : (unknown : any)",
-				"file_exists": "file_exists : (unknown : any)",
-				"is_directory": "is_directory : (unknown : any)",
-				"delete_directory": "delete_directory : (unknown : any)",
-				"get_files": "get_files : (unknown : any)",
-				"read_file": "read_file : (unknown : any)",
-				"copy_file": "copy_file : (unknown : any, unknown : any)",
-				"get_directories": "get_directories : (unknown : any)",
-				"create_directory": "create_directory : (unknown : any)",
-				"directory_exists": "directory_exists : (unknown : any)",
-				"write_file": "write_file : (unknown : any, unknown : any)"
+				"delete_file": "delete_file : (path : string)",
+				"file_exists": "file_exists : (path : string)",
+				"is_directory": "is_directory : (path : string)",
+				"delete_directory": "delete_directory : (path : string)",
+				"get_files": "get_files : (path : string)",
+				"read_file": "read_file : (path : string)",
+				"copy_file": "copy_file : (from : string, to : string)",
+				"get_directories": "get_directories : (path : string)",
+				"create_directory": "create_directory : (path : string)",
+				"directory_exists": "directory_exists : (path : string)",
+				"write_file": "write_file : (path : string, content : string)"
 			},
 			"process": {
 				"wait": "wait : (unknown : any, unknown : any)",
@@ -86,7 +86,7 @@
 				"is_running": "is_running : (unknown : any)",
 				"write": "write : (unknown : any)"
 			},
-			"system": "system : (unknown : any)"
+			"system": "system : (command : string)"
 		},
 		"easing": {
 			"type": {
@@ -125,15 +125,15 @@
 		},
 		"bitmap": {
 			"clear": "clear : (unknown : any, unknown : any)",
-			"copy": "copy : (unknown : any)",
-			"destroy": "destroy : (unknown : any)",
+			"copy": "copy : (bitmap : userdata)",
+			"destroy": "destroy : (bitmap : userdata)",
 			"readPixel": "readPixel : (unknown : any, unknown : any, unknown : any)",
-			"getHeight": "getHeight : (unknown : any)",
-			"getWidth": "getWidth : (unknown : any)",
+			"getHeight": "getHeight : (bitmap : userdata)",
+			"getWidth": "getWidth : (bitmap : userdata)",
 			"rotate": "rotate : (unknown : any, unknown : any, unknown : any)",
 			"writePixel": "writePixel : (unknown : any, unknown : any, unknown : any, unknown : any)",
 			"create": "create : (unknown : any, unknown : any, unknown : any, unknown : any)",
-			"getChannels": "getChannels : (unknown : any)"
+			"getChannels": "getChannels : (bitmap : userdata)"
 		},
 		"bitmapFont": {
 			"getLineHeight": "getLineHeight : (unknown : any)",
@@ -243,53 +243,47 @@
 				}
 			},
 			"mouse": {
-				"button_pressed": "button_pressed : (unknown : any)",
+				"button_pressed": "button_pressed : (button : number)",
 				"button": {
 					"left": 0,
 					"middle": 2,
 					"right": 1
 				},
-				"button_down": "button_down : (unknown : any)",
-				"set_position": "set_position : (unknown : any, unknown : any)",
-				"set_hidden": "set_hidden : (unknown : any)",
-				"get_position": "get_position",
-				"button_released": "button_released : (unknown : any)",
-				"get_delta": "get_delta"
+				"button_down": "button_down : (button : number)",
+				"set_position": "set_position : (x : number, y : number)",
+				"set_hidden": "set_hidden : (hide : boolean)",
+				"get_position": "get_position (void)",
+				"button_released": "button_released : (button : number)",
+				"get_delta": "get_delta (void)"
 			}
 		},
 		"window": {
-			"setSize": "setSize : (unknown : any, unknown : any)",
-			"setTitle": "setTitle : (unknown : any)",
-			"setFullscreen": "setFullscreen : (unknown : any)",
-			"getHeight": "getHeight",
-			"getWidth": "getWidth",
-			"getFullscreen": "getFullscreen",
-			"getTitle": "getTitle"
+			"setSize": "setSize : (width : number, height : number)",
+			"setTitle": "setTitle : (title : string)",
+			"setFullscreen": "setFullscreen : (fullscreen : boolean)",
+			"getHeight": "getHeight (void)",
+			"getWidth": "getWidth (void)",
+			"getFullscreen": "getFullscreen (void)",
+			"getTitle": "getTitle (void)"
 		},
 		"bitmapRenderer": {
-			"popContext": "popContext",
+			"popContext": "popContext (void)",
 			"setLeading": "setLeading : (unknown : any)",
-			"bitmapFlip": {
-				"xy": 3,
-				"none": 0,
-				"y": 2,
-				"x": 1
-			},
 			"drawRect": "drawRect : (unknown : any, unknown : any, unknown : any, unknown : any, unknown : any)",
 			"setClipRect": "setClipRect : (unknown : any, unknown : any, unknown : any, unknown : any)",
-			"setBackgroundColor": "setBackgroundColor : (unknown : any)",
+			"setBackgroundColor": "setBackgroundColor : (color : map[r,g,b,a]/array[4])",
 			"setLineCapStyle": "setLineCapStyle : (unknown : any)",
 			"drawBitmap": "drawBitmap : (unknown : any, unknown : any, unknown : any, unknown : any)",
 			"setTracking": "setTracking : (unknown : any)",
 			"drawScaledBitmap": "drawScaledBitmap : (unknown : any, unknown : any, unknown : any, unknown : any, unknown : any)",
-			"clear": "clear : (unknown : any)",
-			"clearClipRect": "clearClipRect",
-			"flip": "flip",
+			"clear": "clear : (color : map[r,g,b,a]/array[4])",
+			"clearClipRect": "clearClipRect (void)",
+			"flip": "flip (void)",
 			"fillRect": "fillRect : (unknown : any, unknown : any, unknown : any, unknown : any, unknown : any)",
-			"getTargetRect": "getTargetRect",
+			"getTargetRect": "getTargetRect (void)",
 			"setFont": "setFont : (unknown : any)",
 			"fillTriangle": "fillTriangle : (unknown : any, unknown : any, unknown : any, unknown : any, unknown : any, unknown : any, unknown : any)",
-			"samplePixel": "samplePixel : (unknown : any, unknown : any)",
+			"samplePixel": "samplePixel : (x : number, y : number)",
 			"setDrawOffset": "setDrawOffset : (unknown : any, unknown : any)",
 			"setDrawMode": "setDrawMode : (unknown : any)",
 			"drawEllipse": "drawEllipse : (unknown : any, unknown : any, unknown : any, unknown : any, unknown : any, unknown : any)",
@@ -299,7 +293,19 @@
 			"fillEllipse": "fillEllipse : (unknown : any, unknown : any, unknown : any, unknown : any, unknown : any)",
 			"drawRotatedBitmap": "drawRotatedBitmap : (unknown : any, unknown : any, unknown : any, unknown : any, unknown : any, unknown : any, unknown : any, unknown : any)",
 			"drawLine": "drawLine : (unknown : any, unknown : any, unknown : any, unknown : any, unknown : any, unknown : any)",
-			"putPixel": "putPixel : (unknown : any, unknown : any, unknown : any)",
+			"putPixel": "putPixel : (x : number, y : number, color : map[r,g,b,a]/array[4])",
+			"flipAxis": {
+				"xy": 3,
+				"none": 0,
+				"y": 2,
+				"x": 1
+			},
+			"drawMode": {
+				"inverted": 3,
+				"additative": 2,
+				"alpha": 0,
+				"copy": 1
+			},
 			"tileBitmap": "tileBitmap : (unknown : any, unknown : any, unknown : any, unknown : any, unknown : any, unknown : any)",
 			"fillPolygon": "fillPolygon : (unknown : any, unknown : any, unknown : any)"
 		}

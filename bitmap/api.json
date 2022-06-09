@@ -302,9 +302,9 @@
 			},
 			"drawMode": {
 				"inverted": 3,
-				"additative": 2,
-				"alpha": 0,
-				"copy": 1
+				"additative": 0,
+				"alpha": 1,
+				"copy": 2
 			},
 			"tileBitmap": "tileBitmap : (unknown : any, unknown : any, unknown : any, unknown : any, unknown : any, unknown : any)",
 			"fillPolygon": "fillPolygon : (unknown : any, unknown : any, unknown : any)"

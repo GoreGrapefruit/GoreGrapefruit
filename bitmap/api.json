@@ -1,154 +1,313 @@
 {
-	"register_tag_extension": "register_tag_extension",
-	"clone": "clone",
-	"readfile": "readfile",
-	"print": "print",
-	"get_tag": "get_tag",
-	"writefile": "writefile",
-	"type": "type",
-	"get_global": "get_global",
-	"get_callstack": "get_callstack",
-	"error": "error",
-	"math": {
-		"ceil": "ceil",
-		"floor": "floor",
-		"sin": "sin",
-		"atan2": "atan2",
-		"cos": "cos",
-		"log": "log",
-		"log10": "log10",
-		"sqrt": "sqrt",
-		"max": "max",
-		"asin": "asin",
-		"tan": "tan",
-		"min": "min",
-		"abs": "abs",
-		"acos": "acos",
-		"atan": "atan"
-	},
-	"fromjson": "fromjson",
-	"tonumber": "tonumber",
-	"tojson": "tojson",
-	"clock": "clock",
-	"compile": "compile",
-	"getlocals": "getlocals",
-	"dofile": "dofile",
-	"tostring": "tostring",
-	"register_tag": "register_tag",
-	"create_tagged_obj": "create_tagged_obj",
-	"dostring": "dostring",
-	"bh": {
-		"log": {
-			"error": "error : (msg : string)",
-			"info": "info : (msg : string)",
-			"warning": "warning : (msg : string)"
+	"globals": {
+		"register_tag_extension": "register_tag_extension",
+		"clone": "clone",
+		"readfile": "readfile",
+		"print": "print",
+		"get_tag": "get_tag",
+		"writefile": "writefile",
+		"type": "type",
+		"get_global": "get_global",
+		"get_callstack": "get_callstack",
+		"error": "error",
+		"math": {
+			"ceil": "ceil",
+			"floor": "floor",
+			"sin": "sin",
+			"atan2": "atan2",
+			"cos": "cos",
+			"log": "log",
+			"log10": "log10",
+			"sqrt": "sqrt",
+			"max": "max",
+			"asin": "asin",
+			"tan": "tan",
+			"min": "min",
+			"abs": "abs",
+			"acos": "acos",
+			"atan": "atan"
 		},
-		"time": {
-			"getElapsed": "getElapsed (void)",
-			"getDelta": "getDelta (void)"
-		},
-		"path": {
-			"ext": "ext : (path : string)",
-			"dir": "dir : (path : string)",
-			"is_relative": "is_relative : (path : string)",
-			"name": "name : (path : string)",
-			"normalize": "normalize : (path : string)",
-			"relative": "relative : (unknown : any, unknown : any)",
-			"is_absolute": "is_absolute : (path : string)"
-		},
-		"os": {
-			"platform": {
-				"unknown": 2,
-				"windows": 0,
-				"macos": 1
+		"fromjson": "fromjson",
+		"tonumber": "tonumber",
+		"tojson": "tojson",
+		"clock": "clock",
+		"compile": "compile",
+		"getlocals": "getlocals",
+		"dofile": "dofile",
+		"tostring": "tostring",
+		"register_tag": "register_tag",
+		"create_tagged_obj": "create_tagged_obj",
+		"dostring": "dostring",
+		"bh": {
+			"physics": {
+				"body_flags": {
+					"static": 1,
+					"trigger": 2
+				},
+				"create_world": "create_world : (gravity_x : number, gravity_y : number)",
+				"destroy_world": "destroy_world : (world : userdata)",
+				"shape_type": {
+					"circle": 1,
+					"box": 0
+				},
+				"body_state_flags": {
+					"inertia_updated": 0
+				}
 			},
-			"get_platform": "get_platform (void)",
-			"set_working_directory": "set_working_directory : (path : string)",
-			"get_working_directory": "get_working_directory (void)",
-			"filesystem": {
-				"delete_file": "delete_file : (path : string)",
-				"file_exists": "file_exists : (path : string)",
-				"is_directory": "is_directory : (path : string)",
-				"delete_directory": "delete_directory : (path : string)",
-				"get_files": "get_files : (path : string)",
-				"read_file": "read_file : (path : string)",
-				"copy_file": "copy_file : (from : string, to : string)",
-				"get_directories": "get_directories : (path : string)",
-				"create_directory": "create_directory : (path : string)",
-				"directory_exists": "directory_exists : (path : string)",
-				"write_file": "write_file : (path : string, content : string)"
+			"bitmap_renderer": {
+				"flip_axis": {
+					"xy": 3,
+					"none": 0,
+					"y": 2,
+					"x": 1
+				},
+				"draw_mode": {
+					"inverted": 3,
+					"additative": 0,
+					"alpha": 1,
+					"copy": 2
+				}
 			},
-			"process": {
-				"wait": "wait : (unknown : any, unknown : any)",
-				"read": "read : (unknown : any)",
-				"terminate": "terminate : (unknown : any)",
-				"create": "create : (unknown : any, unknown : any, unknown : any, unknown : any, unknown : any)",
-				"is_running": "is_running : (unknown : any)",
-				"write": "write : (unknown : any)"
+			"bitmap": {
+				"load": "load : (path : string)",
+				"create": "create : (w : number, h : number, color : map[r,g,b,a]/array[4])"
 			},
-			"system": "system : (command : string)"
-		},
-		"easing": {
-			"type": {
-				"circ_in": 18,
-				"sine_in": 0,
-				"quint_in": 12,
-				"sine_in_out": 2,
-				"circ_out": 19,
-				"circ_in_out": 20,
-				"back_in": 21,
-				"elastic_in": 24,
-				"quad_in": 3,
-				"cubic_in": 6,
-				"expo_out": 16,
-				"quint_in_out": 14,
-				"quint_out": 13,
-				"expo_in_out": 17,
-				"back_in_out": 23,
-				"bounce_in": 27,
-				"bounce_out": 28,
-				"elastic_out": 25,
-				"expo_in": 15,
-				"cubic_out": 7,
-				"quad_out": 4,
-				"quart_in": 9,
-				"quad_in_out": 5,
-				"quart_out": 10,
-				"back_out": 22,
-				"elastic_in_out": 26,
-				"bounce_in_out": 29,
-				"quart_in_out": 11,
-				"cubic_in_out": 8,
-				"sine_out": 1
+			"rect": {
+				"cut_top": "cut_top : (rect : array[4], size : number)",
+				"cut_bottom": "cut_bottom : (rect : array[4], size : number)",
+				"create": "create : (posx : number, posy : number, sizex : number, sizey : number)",
+				"cut_left": "cut_left : (rect : array[4], size : number)",
+				"cut_right": "cut_right : (rect : array[4], size : number)"
 			},
-			"ease": "ease : (unknown : any, unknown : any)"
-		},
-		"bitmap": {
-			"clear": "clear : (unknown : any, unknown : any)",
-			"copy": "copy : (bitmap : userdata)",
-			"destroy": "destroy : (bitmap : userdata)",
-			"readPixel": "readPixel : (unknown : any, unknown : any, unknown : any)",
-			"getHeight": "getHeight : (bitmap : userdata)",
-			"getWidth": "getWidth : (bitmap : userdata)",
-			"rotate": "rotate : (unknown : any, unknown : any, unknown : any)",
-			"writePixel": "writePixel : (unknown : any, unknown : any, unknown : any, unknown : any)",
-			"create": "create : (unknown : any, unknown : any, unknown : any, unknown : any)",
-			"getChannels": "getChannels : (bitmap : userdata)"
-		},
-		"bitmapFont": {
-			"getLineHeight": "getLineHeight : (unknown : any)",
-			"destroy": "destroy : (unknown : any)",
-			"createDefault": "createDefault : (unknown : any)",
-			"getTextHeight": "getTextHeight : (unknown : any, unknown : any)",
-			"getTextWidth": "getTextWidth : (unknown : any, unknown : any)",
-			"getBitmap": "getBitmap : (unknown : any)",
-			"create": "create : (unknown : any, unknown : any)"
-		},
-		"input": {
-			"keyboard": {
-				"key_pressed": "key_pressed : (key : number)",
-				"key_down": "key_down : (key : number)",
-				"key_released": "key_released : (key : number)",
+			"easing": {
+				"type": {
+					"circ_in": 18,
+					"sine_in": 0,
+					"quint_in": 12,
+					"sine_in_out": 2,
+					"circ_out": 19,
+					"circ_in_out": 20,
+					"back_in": 21,
+					"elastic_in": 24,
+					"quad_in": 3,
+					"cubic_in": 6,
+					"expo_out": 16,
+					"quint_in_out": 14,
+					"quint_out": 13,
+					"expo_in_out": 17,
+					"back_in_out": 23,
+					"bounce_in": 27,
+					"bounce_out": 28,
+					"elastic_out": 25,
+					"expo_in": 15,
+					"cubic_out": 7,
+					"quad_out": 4,
+					"quart_in": 9,
+					"quad_in_out": 5,
+					"quart_out": 10,
+					"back_out": 22,
+					"elastic_in_out": 26,
+					"bounce_in_out": 29,
+					"quart_in_out": 11,
+					"cubic_in_out": 8,
+					"sine_out": 1
+				},
+				"ease": "ease : (unknown : any, unknown : any)"
+			},
+			"game": {
+				"resize_framebuffer": "resize_framebuffer : (width : number, height : number)",
+				"get_audio": "get_audio (void)",
+				"get_window": "get_window (void)",
+				"flip": "flip (void)",
+				"get_renderer_3d": "get_renderer_3d (void)",
+				"draw_imgui": "draw_imgui (void)",
+				"get_delta_time": "get_delta_time (void)",
+				"get_elapsed_time": "get_elapsed_time (void)",
+				"get_input": "get_input (void)",
+				"get_renderer": "get_renderer (void)",
+				"quit": "quit (void)",
+				"set_gpu_flip": "set_gpu_flip : (active : boolean)",
+				"get_imgui": "get_imgui (void)",
+				"get_mouse_pos": "get_mouse_pos (void)"
+			},
+			"math": {
+				"vec3": {
+					"xyz": "xyz",
+					"neg": "neg",
+					"mul": "mul",
+					"min_element": "min_element",
+					"dot": "dot",
+					"length_sqr": "length_sqr",
+					"sign": "sign",
+					"div": "div",
+					"div_f": "div_f",
+					"max_element": "max_element",
+					"lerp": "lerp",
+					"normalize": "normalize",
+					"equal": "equal",
+					"add": "add",
+					"sub": "sub",
+					"mul_f": "mul_f",
+					"min": "min",
+					"length": "length",
+					"max": "max",
+					"lerpv": "lerpv",
+					"cross": "cross"
+				},
+				"rad_to_deg": "rad_to_deg",
+				"vec2": {
+					"dot": "dot",
+					"mul": "mul",
+					"length_sqr": "length_sqr",
+					"div_f": "div_f",
+					"normalize": "normalize",
+					"add": "add",
+					"sub": "sub",
+					"mul_f": "mul_f",
+					"min": "min",
+					"length": "length",
+					"max": "max",
+					"abs": "abs",
+					"create": "create"
+				},
+				"mat44": {
+					"projection": "projection",
+					"transpose": "transpose",
+					"rotate_y": "rotate_y",
+					"rotation_axis": "rotation_axis",
+					"mul": "mul",
+					"determinant": "determinant",
+					"set_translate": "set_translate",
+					"orthographic": "orthographic",
+					"normalize": "normalize",
+					"extract_scale": "extract_scale",
+					"rotate_z": "rotate_z",
+					"equal": "equal",
+					"scale": "scale",
+					"euler": "euler",
+					"mul_f": "mul_f",
+					"rotate_x": "rotate_x",
+					"translate": "translate",
+					"inv": "inv",
+					"mul_vec3": "mul_vec3",
+					"mul_vec3_div_w": "mul_vec3_div_w",
+					"get_translate": "get_translate",
+					"get_rotation": "get_rotation"
+				},
+				"deg_to_rad": "deg_to_rad"
+			},
+			"font": {
+				"create_default": "create_default : (fontSize : number)",
+				"create": "create : (file : string, fontSize : number)"
+			},
+			"log": {
+				"error": "error : (msg : string)",
+				"assert": "assert : (condition : boolean, msg : string)",
+				"info": "info : (msg : string)",
+				"warning": "warning : (msg : string)"
+			},
+			"path": {
+				"ext": "ext : (path : string)",
+				"dir": "dir : (path : string)",
+				"is_relative": "is_relative : (path : string)",
+				"name": "name : (path : string)",
+				"normalize": "normalize : (path : string)",
+				"relative": "relative : (unknown : any, unknown : any)",
+				"is_absolute": "is_absolute : (path : string)"
+			},
+			"os": {
+				"platform": {
+					"unknown": 2,
+					"windows": 0,
+					"macos": 1
+				},
+				"get_platform": "get_platform (void)",
+				"set_working_directory": "set_working_directory : (path : string)",
+				"get_working_directory": "get_working_directory (void)",
+				"filesystem": {
+					"delete_file": "delete_file : (path : string)",
+					"file_exists": "file_exists : (path : string)",
+					"is_directory": "is_directory : (path : string)",
+					"delete_directory": "delete_directory : (path : string)",
+					"get_files": "get_files : (path : string)",
+					"read_file": "read_file : (path : string)",
+					"copy_file": "copy_file : (from : string, to : string)",
+					"get_directories": "get_directories : (path : string)",
+					"create_directory": "create_directory : (path : string)",
+					"directory_exists": "directory_exists : (path : string)",
+					"write_file": "write_file : (path : string, content : string)"
+				},
+				"process": {
+					"wait": "wait : (unknown : any, unknown : any)",
+					"read": "read : (unknown : any)",
+					"terminate": "terminate : (unknown : any)",
+					"create": "create : (unknown : any, unknown : any, unknown : any, unknown : any, unknown : any)",
+					"is_running": "is_running : (unknown : any)",
+					"write": "write : (unknown : any)"
+				},
+				"system": "system : (command : string)"
+			},
+			"color": {
+				"blue": {
+					"a": 255,
+					"r": 0,
+					"g": 0,
+					"b": 255
+				},
+				"yellow": {
+					"a": 255,
+					"r": 255,
+					"g": 255,
+					"b": 0
+				},
+				"black": {
+					"a": 255,
+					"r": 0,
+					"g": 0,
+					"b": 0
+				},
+				"red": {
+					"a": 255,
+					"r": 255,
+					"g": 0,
+					"b": 0
+				},
+				"white": {
+					"a": 255,
+					"r": 255,
+					"g": 255,
+					"b": 255
+				},
+				"green": {
+					"a": 255,
+					"r": 0,
+					"g": 255,
+					"b": 0
+				}
+			},
+			"audio": {
+				"create_file_source": "create_file_source : (path : string)",
+				"source_flags": {
+					"process_3d": 8,
+					"inaudable_tick": 16,
+					"listener_relative": 64,
+					"looping": 2,
+					"single_instance": 4,
+					"inaudable_kill": 32
+				},
+				"attenuation_model": {
+					"inv": 0,
+					"linear": 1,
+					"exponential": 2,
+					"none": 3
+				}
+			},
+			"input": {
+				"button": {
+					"left": 0,
+					"middle": 2,
+					"right": 1
+				},
 				"key": {
 					"E": 2,
 					"F9": 44,
@@ -242,75 +401,283 @@
 					"N4": 29
 				}
 			},
-			"mouse": {
-				"button_pressed": "button_pressed : (button : number)",
-				"button": {
+			"rectcut": {
+				"create": "create : (side : number, rect : rect)",
+				"side": {
 					"left": 0,
-					"middle": 2,
+					"bottom": 3,
+					"top": 2,
 					"right": 1
+				}
+			},
+			"imgui": {
+				"input_chars": "input_chars (void)",
+				"window_get": "window_get : (name : string)",
+				"window_end": "window_end (void)",
+				"group_begin": "group_begin : (x : number, y : number)",
+				"drag": "drag : (name : string, speed : number, value : number)",
+				"frame_end": "frame_end (void)",
+				"window_exist": "window_exist : (name : string)",
+				"window_begin_pos_size": "window_begin_pos_size : (name : string, flags : array, x : number, y : number, w : number, h : number)",
+				"frame_begin": "frame_begin : (context : userdata)",
+				"window_begin_pos": "window_begin_pos : (name : string, flags : array, x : number, y : number)",
+				"checkbox": "checkbox : (name : string, value : boolean)",
+				"clip_rect_begin": "clip_rect_begin : (x : number, y : number, w : number, h : number)",
+				"window_flags": {
+					"scrollbars": 96,
+					"resize": 4,
+					"move": 2,
+					"inactive": 16,
+					"title": 1,
+					"scrollbar_vertical": 64,
+					"collapse": 8,
+					"scrollbar_horizontal": 32
 				},
-				"button_down": "button_down : (button : number)",
-				"set_position": "set_position : (x : number, y : number)",
-				"set_hidden": "set_hidden : (hide : boolean)",
-				"get_position": "get_position (void)",
-				"button_released": "button_released : (button : number)",
-				"get_delta": "get_delta (void)"
+				"add_line": "add_line (void)",
+				"clip_rect_end": "clip_rect_end (void)",
+				"same_line": "same_line (void)",
+				"group_end": "group_end (void)",
+				"button": "button : (name : string)",
+				"style_color_type": {
+					"border_active": 10,
+					"focus": 6,
+					"hot": 3,
+					"background_menu_bar": 8,
+					"inactive": 5,
+					"border_inactive": 11,
+					"text_inactive": 1,
+					"text_hot": 2,
+					"border_hot": 9,
+					"text_active": 0,
+					"background": 7,
+					"active": 4
+				},
+				"image": "image : (name : string, bitmap : userdata)",
+				"window_begin": "window_begin : (name : string, flags : array)",
+				"move_cursor": "move_cursor : (x : number, y : number)",
+				"label": "label : (name : string)",
+				"slider": "slider : (name : string, min : number, max : number, value : number)",
+				"text": "text : (name : string, text : string)"
 			}
 		},
-		"window": {
-			"setSize": "setSize : (width : number, height : number)",
-			"setTitle": "setTitle : (title : string)",
-			"setFullscreen": "setFullscreen : (fullscreen : boolean)",
-			"getHeight": "getHeight (void)",
-			"getWidth": "getWidth (void)",
-			"getFullscreen": "getFullscreen (void)",
-			"getTitle": "getTitle (void)"
-		},
-		"bitmapRenderer": {
-			"popContext": "popContext (void)",
-			"setLeading": "setLeading : (unknown : any)",
-			"drawRect": "drawRect : (unknown : any, unknown : any, unknown : any, unknown : any, unknown : any)",
-			"setClipRect": "setClipRect : (unknown : any, unknown : any, unknown : any, unknown : any)",
-			"setBackgroundColor": "setBackgroundColor : (color : map[r,g,b,a]/array[4])",
-			"setLineCapStyle": "setLineCapStyle : (unknown : any)",
-			"drawBitmap": "drawBitmap : (unknown : any, unknown : any, unknown : any, unknown : any)",
-			"setTracking": "setTracking : (unknown : any)",
-			"drawScaledBitmap": "drawScaledBitmap : (unknown : any, unknown : any, unknown : any, unknown : any, unknown : any)",
-			"clear": "clear : (color : map[r,g,b,a]/array[4])",
-			"clearClipRect": "clearClipRect (void)",
-			"flip": "flip (void)",
-			"fillRect": "fillRect : (unknown : any, unknown : any, unknown : any, unknown : any, unknown : any)",
-			"getTargetRect": "getTargetRect (void)",
-			"setFont": "setFont : (unknown : any)",
-			"fillTriangle": "fillTriangle : (unknown : any, unknown : any, unknown : any, unknown : any, unknown : any, unknown : any, unknown : any)",
-			"samplePixel": "samplePixel : (x : number, y : number)",
-			"setDrawOffset": "setDrawOffset : (unknown : any, unknown : any)",
-			"setDrawMode": "setDrawMode : (unknown : any)",
-			"drawEllipse": "drawEllipse : (unknown : any, unknown : any, unknown : any, unknown : any, unknown : any, unknown : any)",
-			"setStencil": "setStencil : (unknown : any, unknown : any)",
-			"pushContext": "pushContext : (unknown : any)",
-			"drawText": "drawText : (unknown : any, unknown : any, unknown : any, unknown : any)",
-			"fillEllipse": "fillEllipse : (unknown : any, unknown : any, unknown : any, unknown : any, unknown : any)",
-			"drawRotatedBitmap": "drawRotatedBitmap : (unknown : any, unknown : any, unknown : any, unknown : any, unknown : any, unknown : any, unknown : any, unknown : any)",
-			"drawLine": "drawLine : (unknown : any, unknown : any, unknown : any, unknown : any, unknown : any, unknown : any)",
-			"putPixel": "putPixel : (x : number, y : number, color : map[r,g,b,a]/array[4])",
-			"flipAxis": {
-				"xy": 3,
-				"none": 0,
-				"y": 2,
-				"x": 1
-			},
-			"drawMode": {
-				"inverted": 3,
-				"additative": 0,
-				"alpha": 1,
-				"copy": 2
-			},
-			"tileBitmap": "tileBitmap : (unknown : any, unknown : any, unknown : any, unknown : any, unknown : any, unknown : any)",
-			"fillPolygon": "fillPolygon : (unknown : any, unknown : any, unknown : any)"
-		}
+		"add_global": "add_global",
+		"assert": "assert",
+		"set_global": "set_global"
 	},
-	"add_global": "add_global",
-	"assert": "assert",
-	"set_global": "set_global"
+	"tags": {
+		"rook_base_obj": {},
+		"float": {},
+		"bool": {},
+		"str_view": {},
+		"vec2": {},
+		"vec3": {},
+		"mat44": {},
+		"input": {
+			"button_pressed": "button_pressed : (button : number)",
+			"button_down": "button_down : (button : number)",
+			"set_position": "set_position : (x : number, y : number)",
+			"set_hidden": "set_hidden : (hide : boolean)",
+			"key_pressed": "key_pressed : (key : number)",
+			"key_down": "key_down : (key : number)",
+			"key_released": "key_released : (key : number)",
+			"get_position": "get_position (void)",
+			"button_released": "button_released : (button : number)",
+			"get_delta": "get_delta (void)"
+		},
+		"Window": {
+			"set_title": "set_title : (title : string)",
+			"get_height": "get_height (void)",
+			"get_width": "get_width (void)",
+			"set_icon": "set_icon : (bitmap : userdata)",
+			"get_fullscreen": "get_fullscreen (void)",
+			"set_size": "set_size : (width : number, height : number)",
+			"get_title": "get_title (void)",
+			"set_fullscreen": "set_fullscreen : (fullscreen : boolean)"
+		},
+		"physics_shape": {
+			"get_type": "get_type (void)",
+			"set_offset": "set_offset : (x : number, y : number)",
+			"get_size": "get_size (void)",
+			"set_radius": "set_radius : (radius : number)",
+			"get_offset": "get_offset (void)",
+			"get_angle": "get_angle (void)",
+			"set_size": "set_size : (x : number, y : number)",
+			"get_radius": "get_radius (void)",
+			"set_angle": "set_angle : (angle : number)"
+		},
+		"physics_body": {
+			"set_sleeping": "set_sleeping : (sleeping : boolean)",
+			"set_linear_damping": "set_linear_damping : (linear_damping : number)",
+			"destroy_shape": "destroy_shape : (shape_index : number)",
+			"get_linear_damping": "get_linear_damping (void)",
+			"add_force": "add_force : (force_x : number, force_y : number)",
+			"add_force_at_pos": "add_force_at_pos : (force_x : number, force_y : number, pos_x : number, pos_y : number)",
+			"get_mass": "get_mass (void)",
+			"add_circle_shape": "add_circle_shape : (radius : number)",
+			"get_angle": "get_angle (void)",
+			"get_angular_velocity": "get_angular_velocity (void)",
+			"set_angular_damping": "set_angular_damping : (angle : number)",
+			"add_torque": "add_torque : (torque : number)",
+			"set_position": "set_position : (x : number, y : number)",
+			"add_impulse": "add_impulse : (impulse_x : number, impulse_y : number)",
+			"add_impulse_at_pos": "add_impulse_at_pos : (impulse_x : number, impulse_y : number, pos_x : number, pos_y : number)",
+			"set_static": "set_static : (static : boolean)",
+			"get_position": "get_position (void)",
+			"set_linear_velocity": "set_linear_velocity : (vel_x : number, vel_y : number)",
+			"get_static": "get_static (void)",
+			"set_angle": "set_angle : (angle : number)",
+			"get_angular_damping": "get_angular_damping (void)",
+			"get_linear_velocity": "get_linear_velocity (void)",
+			"get_sleeping": "get_sleeping (void)",
+			"get_shape": "get_shape : (shape_index : number)",
+			"get_trigger": "get_trigger (void)",
+			"set_angular_velocity": "set_angular_velocity : (vel : number)",
+			"set_trigger": "set_trigger : (trigger : boolean)",
+			"set_mass": "set_mass : (mass : number)",
+			"add_box_shape": "add_box_shape : (width : number, height : number)",
+			"get_num_shapes": "get_num_shapes (void)"
+		},
+		"physics_world": {
+			"create_body": "create_body (void)",
+			"destroy_body": "destroy_body : (body : userdata)",
+			"get_manifolds": "get_manifolds (void)",
+			"destroy": "destroy (void)",
+			"simulate": "simulate : (delta_time : number, steps : number)"
+		},
+		"bitmap": {
+			"clear": "clear : (color : map[r,g,b,a]/array[4])",
+			"get_height": "get_height (void)",
+			"copy": "copy (void)",
+			"destroy": "destroy (void)",
+			"get_width": "get_width (void)",
+			"write_pixel": "write_pixel : (x : number, y : number, color : map[r,g,b,a]/array[4])",
+			"save": "save : (path : string)",
+			"rotate": "rotate : (angle : number, color : map[r,g,b,a]/array[4])",
+			"read_pixel": "read_pixel : (x : number, y : number)"
+		},
+		"Font": {
+			"get_line_height": "get_line_height (void)",
+			"get_text_height": "get_text_height : (text : string)",
+			"get_text_width": "get_text_width : (text : string)",
+			"destroy": "destroy (void)",
+			"get_bitmap": "get_bitmap (void)"
+		},
+		"Renderer": {
+			"put_pixel": "put_pixel : (x : number, y : number, color : map[r,g,b,a]/array[4])",
+			"set_font": "set_font : (font : userdata)",
+			"set_draw_offset": "set_draw_offset : (dx : number, dy : number)",
+			"set_tracking": "set_tracking : (tracking : number)",
+			"draw_bitmap_rect": "draw_bitmap_rect : (bitmap : userdata, x : number, y : number, bitmap_x : number, bitmap_y : number, bitmap_h : number, bitmap_w : number, flipAxes : number)",
+			"sample_pixel": "sample_pixel : (x : number, y : number)",
+			"push_context": "push_context : (bitmap : userdata)",
+			"pop_clip_rect": "pop_clip_rect (void)",
+			"draw_rect": "draw_rect : (x : number, y : number, w : number, h : number, color : map[r,g,b,a]/array[4])",
+			"set_draw_mode": "set_draw_mode : (mode : number)",
+			"pop_context": "pop_context (void)",
+			"draw_rotated_bitmap": "draw_rotated_bitmap : (bitmap : userdata, x : number, y : number, angle : number, centerX : number, centerY : number, scaleX : number, scaleY : number)",
+			"draw_line": "draw_line : (x1 : number, y1 : number, x2 : number, y2 : number, width : number, color : map[r,g,b,a]/array[4])",
+			"fill_polygon": "fill_polygon : (pointArray : array, color : map[r,g,b,a]/array[4], polygonDrawRule : number)",
+			"get_target": "get_target (void)",
+			"clear": "clear : (color : map[r,g,b,a]/array[4])",
+			"fill_rotated_rect": "fill_rotated_rect : (x : number, y : number, w : number, h : number, angle : number, color : map[r,g,b,a]/array[4])",
+			"fill_ellipse": "fill_ellipse : (x : number, y : number, w : number, h : number, color : map[r,g,b,a]/array[4])",
+			"get_font": "get_font (void)",
+			"set_stencil": "set_stencil : (stencil : userdata, tile : boolean)",
+			"get_target_rect": "get_target_rect (void)",
+			"draw_scaled_bitmap": "draw_scaled_bitmap : (bitmap : userdata, x : number, y : number, scaleX : number, scaleY : number)",
+			"draw_ellipse": "draw_ellipse : (x : number, y : number, w : number, h : number, lineWidth : number, color : map[r,g,b,a]/array[4])",
+			"set_leading": "set_leading : (leading : number)",
+			"set_line_cap_style": "set_line_cap_style : (style : number)",
+			"set_background_color": "set_background_color : (color : map[r,g,b,a]/array[4])",
+			"get_text_size": "get_text_size : (text : string)",
+			"draw_bitmap": "draw_bitmap : (bitmap : userdata, x : number, y : number, flipAxes : number)",
+			"draw_text": "draw_text : (text : string, x : number, y : number, color : map[r,g,b,a]/array[4])",
+			"fill_triangle": "fill_triangle : (x1 : number, y1 : number, x2 : number, y2 : number, x3 : number, y3 : number, color : map[r,g,b,a]/array[4])",
+			"fill_rect": "fill_rect : (x : number, y : number, w : number, h : number, color : map[r,g,b,a]/array[4])",
+			"tile_bitmap": "tile_bitmap : (bitmap : userdata, x : number, y : number, w : number, h : number, flipAxes : number)",
+			"draw_rotated_rect": "draw_rotated_rect : (x : number, y : number, w : number, h : number, angle : number, line_width : number, color : map[r,g,b,a]/array[4])",
+			"push_clip_rect": "push_clip_rect : (x : number, y : number, w : number, h : number)"
+		},
+		"Renderer3D": {
+			"get_depth_buffer": "get_depth_buffer (void)",
+			"set_model": "set_model : (matrix : array)",
+			"clear": "clear : (color : map[r,g,b,a]/array[4], stencil : number, depth : number)",
+			"draw_triangle": "draw_triangle : (pos : array, color : array)",
+			"draw_textured_triangle": "draw_textured_triangle : (pos : array, uv : array, bitmap : userdata)",
+			"get_stencil_buffer": "get_stencil_buffer (void)",
+			"set_framebuffer": "set_framebuffer : (bitmap : userdata)",
+			"set_projection": "set_projection : (matrix : array)",
+			"set_stencil_buffer": "set_stencil_buffer : (bitmap : userdata)",
+			"set_depth_buffer": "set_depth_buffer : (bitmap : userdata)",
+			"get_framebuffer": "get_framebuffer (void)",
+			"set_view": "set_view : (matrix : array)"
+		},
+		"rect": {},
+		"rectcut": {
+			"cut": "cut : (size : number)"
+		},
+		"imgui_context": {
+			"get_style": "get_style (void)"
+		},
+		"imgui_style": {
+			"set_padding": "set_padding : (x : number, y : number)",
+			"set_text_padding": "set_text_padding : (x : number, y : number)",
+			"set_font": "set_font : (font : userdata)",
+			"set_window_resize_size": "set_window_resize_size : (size : number)",
+			"set_border_thickness": "set_border_thickness : (thickness : number)",
+			"set_color": "set_color : (style_color_type : number, color : map[r,g,b,a]/array[4])",
+			"set_window_scrollbar_size": "set_window_scrollbar_size : (size : number)"
+		},
+		"imgui_window": {},
+		"audio_context": {
+			"get_default_bus": "get_default_bus (void)",
+			"play_in_bus": "play_in_bus : (source : audio_source, bus : audio_bus)",
+			"play": "play : (audio_source : audio_source)"
+		},
+		"audio_source": {
+			"set_max_distance": "set_max_distance : (distance : number)",
+			"get_attenuation_factor": "get_attenuation_factor (void)",
+			"set_min_distance": "set_min_distance : (distance : number)",
+			"get_attenuation_model": "get_attenuation_model (void)",
+			"get_max_distance": "get_max_distance (void)",
+			"set_attenuation_model": "set_attenuation_model : (model : number)",
+			"get_flag": "get_flag : (flag : number)",
+			"set_attenuation_factor": "set_attenuation_factor : (factor : number)",
+			"set_flag": "set_flag : (flag : number, state : boolean)",
+			"get_min_distance": "get_min_distance (void)"
+		},
+		"audio_instance": {
+			"set_max_distance": "set_max_distance : (distance : number)",
+			"get_time_pos": "get_time_pos (void)",
+			"get_max_distance": "get_max_distance (void)",
+			"set_time_pos": "set_time_pos : (pos : number)",
+			"set_volume": "set_volume : (volume : number)",
+			"get_attenuation_factor": "get_attenuation_factor (void)",
+			"set_flag": "set_flag : (flag : number, state : boolean)",
+			"get_min_distance": "get_min_distance (void)",
+			"get_pan": "get_pan (void)",
+			"set_min_distance": "set_min_distance : (distance : number)",
+			"get_attenuation_model": "get_attenuation_model (void)",
+			"get_speed": "get_speed (void)",
+			"set_attenuation_model": "set_attenuation_model : (model : number)",
+			"get_flag": "get_flag : (flag : number)",
+			"set_attenuation_factor": "set_attenuation_factor : (factor : number)",
+			"get_volume": "get_volume (void)",
+			"set_pan": "set_pan : (pan : number)",
+			"set_speed": "set_speed : (speed : number)"
+		},
+		"audio_instance_handle": {},
+		"audio_bus": {
+			"get_volume": "get_volume (void)",
+			"set_pan": "set_pan : (pan : number)",
+			"set_volume": "set_volume : (volume : number)",
+			"get_pan": "get_pan (void)"
+		},
+		"audio_effect": {
+			"get_active": "get_active (void)",
+			"set_wetness": "set_wetness : (wetness : number)",
+			"set_active": "set_active : (wetness : boolean)",
+			"get_wetness": "get_wetness (void)"
+		}
+	}
 }
